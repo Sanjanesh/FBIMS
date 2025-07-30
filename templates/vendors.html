@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Vendors Management - Inventory Management System{% endblock %}
+{% block page_title %}Vendors Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-truck"></i> Vendor Directory
+                </h6>
+                <a href="{{ url_for('add_vendor') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Add New Vendor
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Search and Filter -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchVendors" placeholder="Search vendors...">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="stateFilter">
+                            <option value="">All States</option>
+                            <!-- States will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Vendors Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover" id="vendorsTable">
+                        <thead>
+                            <tr>
+                                <th>Vendor Code</th>
+                                <th>Vendor Name</th>
+                                <th>City</th>
+                                <th>State</th>
+                                <th>Phone</th>
+                                <th>Mobile</th>
+                                <th>Email</th>
+                                <th>GST</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vendor in vendors %}
+                            <tr>
+                                <td><strong>{{ vendor[0] }}</strong></td>
+                                <td>{{ vendor[1] }}</td>
+                                <td>{{ vendor[2] or '-' }}</td>
+                                <td>{{ vendor[3] or '-' }}</td>
+                                <td>
+                                    {% if vendor[4] %}
+                                        {{ vendor[4] }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if vendor[5] %}
+                                        {{ vendor[5] }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if vendor[6] %}
+                                        <a href="mailto:{{ vendor[6] }}">{{ vendor[6] }}</a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ vendor[7] or '-' }}</td>
+                                <td>
+                                    {% if vendor[8] %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('view_vendor', vendor_code=vendor[0]) }}"
+                                           class="btn btn-sm btn-outline-primary" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('edit_vendor', vendor_code=vendor[0]) }}"
+                                           class="btn btn-sm btn-outline-warning" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{{ url_for('purchase_history') }}?vendor={{ vendor[1] }}"
+                                           class="btn btn-sm btn-outline-info" title="Purchase History">
+                                            <i class="fas fa-history"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteVendor({{ vendor[0] }})" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if not vendors %}
+                <div class="text-center py-4">
+                    <i class="fas fa-truck fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No vendors found</h5>
+                    <p class="text-muted">Start by adding your first vendor to the system.</p>
+                    <a href="{{ url_for('add_vendor') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add First Vendor
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vendor Statistics -->
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <i class="fas fa-truck fa-2x mb-2"></i>
+                <h5>{{ vendors|length }}</h5>
+                <p class="mb-0">Total Vendors</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-success text-center">
+            <div class="card-body">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <h5>{{ vendors|selectattr('8')|list|length }}</h5>
+                <p class="mb-0">Active Vendors</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-warning text-center">
+            <div class="card-body">
+                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                <h5>{{ vendors|rejectattr('8')|list|length }}</h5>
+                <p class="mb-0">Inactive Vendors</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-info text-center">
+            <div class="card-body">
+                <i class="fas fa-map-marker-alt fa-2x mb-2"></i>
+                <h5>{{ vendors|map(attribute='3')|select|unique|list|length }}</h5>
+                <p class="mb-0">States</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Search functionality
+document.getElementById('searchVendors').addEventListener('input', function() {
+    filterTable();
+});
+
+document.getElementById('stateFilter').addEventListener('change', function() {
+    filterTable();
+});
+
+document.getElementById('statusFilter').addEventListener('change', function() {
+    filterTable();
+});
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchVendors').value.toLowerCase();
+    const stateFilter = document.getElementById('stateFilter').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    const table = document.getElementById('vendorsTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length > 0) {
+            const vendorCode = cells[0].textContent.toLowerCase();
+            const vendorName = cells[1].textContent.toLowerCase();
+            const state = cells[3].textContent.toLowerCase();
+            const statusBadge = cells[8].querySelector('.badge');
+            const isActive = statusBadge && statusBadge.classList.contains('bg-success');
+            
+            let showRow = true;
+            
+            // Search filter
+            if (searchTerm && !vendorCode.includes(searchTerm) && !vendorName.includes(searchTerm)) {
+                showRow = false;
+            }
+            
+            // State filter
+            if (stateFilter && !state.includes(stateFilter)) {
+                showRow = false;
+            }
+            
+            // Status filter
+            if (statusFilter) {
+                const filterActive = statusFilter === 'true';
+                if (isActive !== filterActive) {
+                    showRow = false;
+                }
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        }
+    }
+}
+
+// Populate state filter
+function populateStateFilter() {
+    const states = new Set();
+    const table = document.getElementById('vendorsTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const stateCell = rows[i].getElementsByTagName('td')[3];
+        if (stateCell && stateCell.textContent.trim() !== '-') {
+            states.add(stateCell.textContent.trim());
+        }
+    }
+    
+    const stateFilter = document.getElementById('stateFilter');
+    Array.from(states).sort().forEach(state => {
+        const option = document.createElement('option');
+        option.value = state;
+        option.textContent = state;
+        stateFilter.appendChild(option);
+    });
+}
+
+// Action functions
+function viewVendor(vendorCode) {
+    alert('View vendor functionality coming soon! Vendor: ' + vendorCode);
+}
+
+function editVendor(vendorCode) {
+    window.location.href = '/vendors/edit/' + vendorCode;
+}
+
+function viewPurchaseHistory(vendorCode) {
+    alert('Purchase history functionality coming soon! Vendor: ' + vendorCode);
+}
+
+function deleteVendor(vendorCode) {
+    if (confirm('Are you sure you want to delete vendor ' + vendorCode + '?')) {
+        // Create a form and submit it for DELETE request
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/vendors/delete/' + vendorCode;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    populateStateFilter();
+});
+</script>
+{% endblock %}

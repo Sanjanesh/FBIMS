@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Add Indent - Inventory Management System{% endblock %}
+{% block page_title %}Add New Indent Request{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-clipboard-list me-2"></i>
+            Create New Indent Request
+        </h5>
+    </div>
+    <div class="card-body">
+        <form id="indentForm" method="POST" action="{{ url_for('create_indent') }}">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="indent_id" class="form-label">Indent Number <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">IN</span>
+                            <input type="number" class="form-control" id="indent_id" name="indent_id"
+                                   value="{{ next_indent_no }}" readonly
+                                   style="background-color: #f8f9fa; cursor: not-allowed;">
+                        </div>
+                        <small class="form-text text-muted">Auto-generated indent number</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="indent_dt" class="form-label">Indent Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="indent_dt" name="indent_dt"
+                               value="{{ current_date }}" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="department" class="form-label">Department <span class="text-danger">*</span></label>
+                        <select class="form-control" id="department" name="department" required>
+                            <option value="">Select Department</option>
+                            <option value="PRODUCTION">Production</option>
+                            <option value="MAINTENANCE">Maintenance</option>
+                            <option value="QUALITY">Quality Control</option>
+                            <option value="STORES">Stores</option>
+                            <option value="ADMIN">Administration</option>
+                            <option value="IT">Information Technology</option>
+                            <option value="HR">Human Resources</option>
+                            <option value="FINANCE">Finance</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="requested_by" class="form-label">Requested By <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="requested_by" name="requested_by" 
+                               pattern="[A-Za-z\s\-\.\(\)\/&]+" 
+                               title="Only letters, spaces, hyphens, dots, parentheses, forward slashes, and ampersands are allowed"
+                               required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="remarks" class="form-label">Remarks</label>
+                        <textarea class="form-control" id="remarks" name="remarks" rows="2"
+                                  placeholder="Any additional notes or justification"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Line Items Section -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Indent Items</h6>
+                <button type="button" class="btn btn-success btn-sm" onclick="addRow()">
+                    <i class="fas fa-plus"></i> Add Item
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered" id="itemsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="25%">Part <span class="text-danger">*</span></th>
+                            <th width="20%">Description</th>
+                            <th width="15%">Quantity <span class="text-danger">*</span></th>
+                            <th width="20%">Required Date</th>
+                            <th width="15%">Remarks</th>
+                            <th width="5%">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <select class="form-control part-select" name="part_num[]" required onchange="updatePartDesc(this)">
+                                    <option value="">Select Part</option>
+                                    {% for part in parts %}
+                                    <option value="{{ part[0] }}">{{ part[0] }} - {{ part[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control part-desc" name="part_desc[]" readonly>
+                            </td>
+                            <td>
+                                <input type="number" class="form-control" name="quantity[]" 
+                                       step="0.01" min="0.01" max="999999" required>
+                            </td>
+                            <td>
+                                <input type="date" class="form-control" name="required_date[]">
+                            </td>
+                            <td>
+                                <input type="text" class="form-control" name="item_remarks[]" 
+                                       placeholder="Item specific notes">
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('indents') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Create Indent
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addRow() {
+    const table = document.getElementById('itemsTable').getElementsByTagName('tbody')[0];
+    const newRow = table.rows[0].cloneNode(true);
+    
+    // Clear all input values
+    const inputs = newRow.getElementsByTagName('input');
+    for (let input of inputs) {
+        input.value = '';
+    }
+    
+    // Clear select values
+    const selects = newRow.getElementsByTagName('select');
+    for (let select of selects) {
+        select.selectedIndex = 0;
+    }
+    
+    table.appendChild(newRow);
+}
+
+function removeRow(button) {
+    const table = document.getElementById('itemsTable').getElementsByTagName('tbody')[0];
+    if (table.rows.length > 1) {
+        button.closest('tr').remove();
+    } else {
+        alert('At least one item is required');
+    }
+}
+
+function updatePartDesc(selectElement) {
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const partDescInput = selectElement.closest('tr').querySelector('.part-desc');
+    
+    if (selectedOption.value) {
+        const partDesc = selectedOption.text.split(' - ')[1] || '';
+        partDescInput.value = partDesc;
+    } else {
+        partDescInput.value = '';
+    }
+}
+
+// Form validation
+document.getElementById('indentForm').addEventListener('submit', function(e) {
+    const table = document.getElementById('itemsTable').getElementsByTagName('tbody')[0];
+    let hasValidItems = false;
+    
+    for (let i = 0; i < table.rows.length; i++) {
+        const partSelect = table.rows[i].querySelector('.part-select');
+        const quantityInput = table.rows[i].querySelector('input[name="quantity[]"]');
+        
+        if (partSelect.value && quantityInput.value && parseFloat(quantityInput.value) > 0) {
+            hasValidItems = true;
+            break;
+        }
+    }
+    
+    if (!hasValidItems) {
+        e.preventDefault();
+        alert('Please add at least one valid item with part and quantity');
+        return false;
+    }
+});
+</script>
+{% endblock %}

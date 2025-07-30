@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Stock History - {{ part_details[1] }} - Inventory Management System{% endblock %}
+{% block page_title %}Stock History - {{ part_details[1] }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-history"></i> Stock Movement History
+                </h6>
+                <div>
+                    <button class="btn btn-sm btn-success" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                    <a href="{{ url_for('stock_management') }}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Stock
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Part Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5 class="text-primary">Part Information</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Part Number:</strong></td>
+                                <td>{{ part_details[0] }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Description:</strong></td>
+                                <td>{{ part_details[1] }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Category:</strong></td>
+                                <td>{{ part_details[2] or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Unit:</strong></td>
+                                <td>{{ part_details[3] or 'N/A' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="text-primary">Current Status</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="card stat-card-success text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-boxes fa-2x mb-2"></i>
+                                        <h5>{{ stock_history|selectattr('type', 'equalto', 'IN')|map(attribute='quantity')|sum - stock_history|selectattr('type', 'equalto', 'OUT')|map(attribute='quantity')|sum }}</h5>
+                                        <p class="mb-0">Current Stock</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card stat-card-info text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-exchange-alt fa-2x mb-2"></i>
+                                        <h5>{{ stock_history|length }}</h5>
+                                        <p class="mb-0">Transactions</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Stock Movement History -->
+                <div class="row">
+                    <div class="col-12">
+                        <h5 class="text-primary mb-3">
+                            <i class="fas fa-list"></i> Movement History
+                        </h5>
+                        
+                        {% if stock_history %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th class="text-end">Quantity</th>
+                                        <th>Reference</th>
+                                        <th>Remarks</th>
+                                        <th class="text-end">Running Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set running_balance = 0 %}
+                                    {% for movement in stock_history %}
+                                    {% if movement.type == 'IN' %}
+                                        {% set running_balance = running_balance + movement.quantity %}
+                                    {% else %}
+                                        {% set running_balance = running_balance - movement.quantity %}
+                                    {% endif %}
+                                    <tr>
+                                        <td>{{ movement.date }}</td>
+                                        <td>
+                                            {% if movement.type == 'IN' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-arrow-up"></i> Stock In
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-arrow-down"></i> Stock Out
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            {% if movement.type == 'IN' %}
+                                                <span class="text-success">+{{ movement.quantity }}</span>
+                                            {% else %}
+                                                <span class="text-danger">-{{ movement.quantity }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ movement.reference }}</td>
+                                        <td>{{ movement.remarks }}</td>
+                                        <td class="text-end">
+                                            <strong class="{% if running_balance > 0 %}text-success{% elif running_balance == 0 %}text-warning{% else %}text-danger{% endif %}">
+                                                {{ running_balance }}
+                                            </strong>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No stock movements found for this part.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Summary Statistics -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-arrow-up fa-2x mb-2 text-success"></i>
+                                <h5>{{ stock_history|selectattr('type', 'equalto', 'IN')|map(attribute='quantity')|sum }}</h5>
+                                <p class="mb-0">Total Stock In</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-arrow-down fa-2x mb-2 text-danger"></i>
+                                <h5>{{ stock_history|selectattr('type', 'equalto', 'OUT')|map(attribute='quantity')|sum }}</h5>
+                                <p class="mb-0">Total Stock Out</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card-success text-center">
+                            <div class="card-body">
+                                <i class="fas fa-balance-scale fa-2x mb-2"></i>
+                                <h5>{{ stock_history|selectattr('type', 'equalto', 'IN')|map(attribute='quantity')|sum - stock_history|selectattr('type', 'equalto', 'OUT')|map(attribute='quantity')|sum }}</h5>
+                                <p class="mb-0">Net Balance</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card-info text-center">
+                            <div class="card-body">
+                                <i class="fas fa-calendar fa-2x mb-2"></i>
+                                <h5>{{ stock_history|length }}</h5>
+                                <p class="mb-0">Total Movements</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .btn, .card-header .btn {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .card-body {
+        padding: 0 !important;
+    }
+    
+    body {
+        background: white !important;
+    }
+}
+</style>
+{% endblock %}

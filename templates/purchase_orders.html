@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Orders - Inventory Management System{% endblock %}
+{% block page_title %}Purchase Orders{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-shopping-cart"></i> Purchase Orders
+                </h6>
+                <a href="{{ url_for('add_purchase_order') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Create New PO
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Search and Filter -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchPO" placeholder="Search PO number or vendor...">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="dateFromFilter" placeholder="From Date">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="dateToFilter" placeholder="To Date">
+                    </div>
+                </div>
+
+                <!-- Purchase Orders Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover" id="purchaseOrdersTable">
+                        <thead>
+                            <tr>
+                                <th>PO Number</th>
+                                <th>PO Date</th>
+                                <th>Vendor Name</th>
+                                <th>Line Items</th>
+                                <th>Total Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for po in purchase_orders %}
+                            <tr>
+                                <td><strong>{{ po[0] }}</strong></td>
+                                <td>{{ po[1].strftime('%Y-%m-%d') if po[1] else '-' }}</td>
+                                <td>{{ po[2] or 'Unknown Vendor' }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ po[4] or 0 }} items</span>
+                                </td>
+                                <td>
+                                    {% if po[5] %}
+                                        <strong>₹{{ "%.2f"|format(po[5]) }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">₹0.00</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if po[3] %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('view_purchase_order', po_no=po[0]) }}"
+                                           class="btn btn-sm btn-outline-primary" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('edit_purchase_order', po_no=po[0]) }}"
+                                           class="btn btn-sm btn-outline-warning" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-success" 
+                                                onclick="printPO({{ po[0] }})" title="Print">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-info"
+                                                onclick="createGRN({{ po[0] }})" title="Create GRN">
+                                            <i class="fas fa-receipt"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="deletePO({{ po[0] }})" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if not purchase_orders %}
+                <div class="text-center py-4">
+                    <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No purchase orders found</h5>
+                    <p class="text-muted">Start by creating your first purchase order.</p>
+                    <a href="{{ url_for('add_purchase_order') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create First PO
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Purchase Order Statistics -->
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                <h5>{{ purchase_orders|length }}</h5>
+                <p class="mb-0">Total POs</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-success text-center">
+            <div class="card-body">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <h5>{{ purchase_orders|selectattr('3')|list|length }}</h5>
+                <p class="mb-0">Active POs</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-warning text-center">
+            <div class="card-body">
+                <i class="fas fa-clock fa-2x mb-2"></i>
+                <h5>{{ purchase_orders|rejectattr('3')|list|length }}</h5>
+                <p class="mb-0">Inactive POs</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-info text-center">
+            <div class="card-body">
+                <i class="fas fa-rupee-sign fa-2x mb-2"></i>
+                <h5>₹{{ "%.0f"|format(purchase_orders|map(attribute='5')|select|sum) }}</h5>
+                <p class="mb-0">Total Value</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Search and filter functionality
+document.getElementById('searchPO').addEventListener('input', filterTable);
+document.getElementById('statusFilter').addEventListener('change', filterTable);
+document.getElementById('dateFromFilter').addEventListener('change', filterTable);
+document.getElementById('dateToFilter').addEventListener('change', filterTable);
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchPO').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const dateFrom = document.getElementById('dateFromFilter').value;
+    const dateTo = document.getElementById('dateToFilter').value;
+    
+    const table = document.getElementById('purchaseOrdersTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length > 0) {
+            const poNumber = cells[0].textContent.toLowerCase();
+            const poDate = cells[1].textContent;
+            const vendorName = cells[2].textContent.toLowerCase();
+            const statusBadge = cells[5].querySelector('.badge');
+            const isActive = statusBadge && statusBadge.classList.contains('bg-success');
+            
+            let showRow = true;
+            
+            // Search filter
+            if (searchTerm && !poNumber.includes(searchTerm) && !vendorName.includes(searchTerm)) {
+                showRow = false;
+            }
+            
+            // Status filter
+            if (statusFilter) {
+                const filterActive = statusFilter === 'true';
+                if (isActive !== filterActive) {
+                    showRow = false;
+                }
+            }
+            
+            // Date filters
+            if (dateFrom && poDate < dateFrom) {
+                showRow = false;
+            }
+            if (dateTo && poDate > dateTo) {
+                showRow = false;
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        }
+    }
+}
+
+// Action functions
+function viewPO(poNumber) {
+    alert('View PO functionality coming soon! PO: ' + poNumber);
+}
+
+function editPO(poNumber) {
+    window.location.href = '/purchase_orders/edit/' + poNumber;
+}
+
+function printPO(poNumber) {
+    window.open('/purchase_orders/view/' + poNumber, '_blank');
+}
+
+function createGRN(poNumber) {
+    // Check if PO has line items before creating GRN
+    fetch('/api/check_po_items/' + poNumber)
+        .then(response => response.json())
+        .then(data => {
+            if (data.has_items) {
+                window.location.href = '/create_grn/' + poNumber;
+            } else {
+                alert('Cannot create GRN: This Purchase Order has no parts. Please add parts to the PO first.');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking PO items:', error);
+            alert('Error checking Purchase Order items. Please try again.');
+        });
+}
+
+function deletePO(poNumber) {
+    if (confirm('Are you sure you want to delete PO ' + poNumber + '?')) {
+        // Create a form and submit it for DELETE request
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/purchase_orders/delete/' + poNumber;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}Parts Report - Inventory Management System{% endblock %}
+{% block page_title %}Parts Report{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-cogs"></i> Comprehensive Parts Report
+                </h6>
+                <div>
+                    <button class="btn btn-success btn-sm" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel"></i> Export to Excel
+                    </button>
+                    <button class="btn btn-info btn-sm" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print Report
+                    </button>
+                    <a href="{{ url_for('reports') }}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back to Reports
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Report Filters -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="categoryFilter">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="typeFilter">
+                            <option value="">All Types</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control form-control-sm" id="searchFilter" 
+                               placeholder="Search parts...">
+                    </div>
+                </div>
+
+                <!-- Parts Report Table -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-sm" id="partsReportTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Part Number</th>
+                                <th>Description</th>
+                                <th>Type</th>
+                                <th>Category</th>
+                                <th>Unit</th>
+                                <th class="text-end">Purchase Price</th>
+                                <th class="text-end">Selling Price</th>
+                                <th class="text-end">Margin</th>
+                                <th>HSN Code</th>
+                                <th>Tax</th>
+                                <th class="text-end">Tax %</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for part in parts_data %}
+                            <tr>
+                                <td><strong>{{ part[0] }}</strong></td>
+                                <td>{{ part[1] }}</td>
+                                <td>{{ part[2] or '-' }}</td>
+                                <td>{{ part[3] or '-' }}</td>
+                                <td>{{ part[4] or '-' }}</td>
+                                <td class="text-end">
+                                    {% if part[5] %}
+                                        ₹{{ "%.2f"|format(part[5]) }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if part[6] %}
+                                        ₹{{ "%.2f"|format(part[6]) }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if part[5] and part[6] %}
+                                        {% set margin = ((part[6] - part[5]) / part[5] * 100) %}
+                                        <span class="badge bg-{{ 'success' if margin > 0 else 'danger' if margin < 0 else 'secondary' }}">
+                                            {{ "%.1f"|format(margin) }}%
+                                        </span>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ part[7] or '-' }}</td>
+                                <td>{{ part[8] or '-' }}</td>
+                                <td class="text-end">{{ part[9] or '-' }}%</td>
+                                <td>
+                                    {% if part[10] %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if not parts_data %}
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No parts data found</h5>
+                    <p class="text-muted">No parts match the current filter criteria.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Summary -->
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <i class="fas fa-cogs fa-2x mb-2"></i>
+                <h5 id="totalParts">{{ parts_data|length }}</h5>
+                <p class="mb-0">Total Parts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-success text-center">
+            <div class="card-body">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <h5 id="activeParts">{{ parts_data|selectattr('10')|list|length }}</h5>
+                <p class="mb-0">Active Parts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-info text-center">
+            <div class="card-body">
+                <i class="fas fa-tags fa-2x mb-2"></i>
+                <h5 id="totalCategories">{{ parts_data|map(attribute='3')|select|unique|list|length }}</h5>
+                <p class="mb-0">Categories</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-warning text-center">
+            <div class="card-body">
+                <i class="fas fa-rupee-sign fa-2x mb-2"></i>
+                <h5 id="avgPrice">₹{{ "%.0f"|format((parts_data|map(attribute='5')|select|sum) / (parts_data|map(attribute='5')|select|list|length) if parts_data|map(attribute='5')|select|list|length > 0 else 0) }}</h5>
+                <p class="mb-0">Avg Purchase Price</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Category Breakdown -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-pie"></i> Parts by Category
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-bar"></i> Parts by Type
+                </h6>
+            </div>
+            <div class="card-body">
+                <canvas id="typeChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .btn, .card-header .btn {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    body {
+        background: white !important;
+    }
+    
+    .row:last-child {
+        display: none !important;
+    }
+}
+
+.table-sm th,
+.table-sm td {
+    padding: 0.3rem;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Filter functionality
+document.getElementById('categoryFilter').addEventListener('change', filterTable);
+document.getElementById('typeFilter').addEventListener('change', filterTable);
+document.getElementById('statusFilter').addEventListener('change', filterTable);
+document.getElementById('searchFilter').addEventListener('input', filterTable);
+
+function filterTable() {
+    const categoryFilter = document.getElementById('categoryFilter').value.toLowerCase();
+    const typeFilter = document.getElementById('typeFilter').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+    
+    const table = document.getElementById('partsReportTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    let visibleCount = 0;
+    let activeCount = 0;
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length > 0) {
+            const partNum = cells[0].textContent.toLowerCase();
+            const description = cells[1].textContent.toLowerCase();
+            const type = cells[2].textContent.toLowerCase();
+            const category = cells[3].textContent.toLowerCase();
+            const statusBadge = cells[11].querySelector('.badge');
+            const isActive = statusBadge && statusBadge.classList.contains('bg-success');
+            
+            let showRow = true;
+            
+            if (categoryFilter && !category.includes(categoryFilter)) showRow = false;
+            if (typeFilter && !type.includes(typeFilter)) showRow = false;
+            if (statusFilter) {
+                const filterActive = statusFilter === 'true';
+                if (isActive !== filterActive) showRow = false;
+            }
+            if (searchFilter && !partNum.includes(searchFilter) && !description.includes(searchFilter)) showRow = false;
+            
+            row.style.display = showRow ? '' : 'none';
+            
+            if (showRow) {
+                visibleCount++;
+                if (isActive) activeCount++;
+            }
+        }
+    }
+    
+    // Update summary cards
+    document.getElementById('totalParts').textContent = visibleCount;
+    document.getElementById('activeParts').textContent = activeCount;
+}
+
+// Populate filter dropdowns
+function populateFilters() {
+    const categories = new Set();
+    const types = new Set();
+    const table = document.getElementById('partsReportTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName('td');
+        if (cells.length > 0) {
+            const type = cells[2].textContent.trim();
+            const category = cells[3].textContent.trim();
+            
+            if (type !== '-') types.add(type);
+            if (category !== '-') categories.add(category);
+        }
+    }
+    
+    // Populate category filter
+    const categoryFilter = document.getElementById('categoryFilter');
+    Array.from(categories).sort().forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categoryFilter.appendChild(option);
+    });
+    
+    // Populate type filter
+    const typeFilter = document.getElementById('typeFilter');
+    Array.from(types).sort().forEach(type => {
+        const option = document.createElement('option');
+        option.value = type;
+        option.textContent = type;
+        typeFilter.appendChild(option);
+    });
+}
+
+// Create charts
+function createCharts() {
+    // Category chart data
+    const categoryData = {};
+    const typeData = {};
+    
+    const table = document.getElementById('partsReportTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName('td');
+        if (cells.length > 0) {
+            const type = cells[2].textContent.trim();
+            const category = cells[3].textContent.trim();
+            
+            if (category !== '-') {
+                categoryData[category] = (categoryData[category] || 0) + 1;
+            }
+            if (type !== '-') {
+                typeData[type] = (typeData[type] || 0) + 1;
+            }
+        }
+    }
+    
+    // Category Chart
+    const ctx1 = document.getElementById('categoryChart').getContext('2d');
+    new Chart(ctx1, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(categoryData),
+            datasets: [{
+                data: Object.values(categoryData),
+                backgroundColor: [
+                    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // Type Chart
+    const ctx2 = document.getElementById('typeChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(typeData),
+            datasets: [{
+                data: Object.values(typeData),
+                backgroundColor: '#4e73df',
+                borderColor: '#4e73df',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function exportToExcel() {
+    alert('Excel export functionality coming soon!');
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    populateFilters();
+    createCharts();
+});
+</script>
+{% endblock %}

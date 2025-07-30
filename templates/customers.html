@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Customers Management - Inventory Management System{% endblock %}
+{% block page_title %}Customers Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-users"></i> Customer Directory
+                </h6>
+                <a href="{{ url_for('add_customer') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Add New Customer
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Search and Filter -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchCustomers" placeholder="Search customers...">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="stateFilter">
+                            <option value="">All States</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Customers Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover" id="customersTable">
+                        <thead>
+                            <tr>
+                                <th>Customer Code</th>
+                                <th>Customer Name</th>
+                                <th>City</th>
+                                <th>State</th>
+                                <th>Phone</th>
+                                <th>Mobile</th>
+                                <th>Email</th>
+                                <th>GST</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in customers %}
+                            <tr>
+                                <td><strong>{{ customer[0] }}</strong></td>
+                                <td>{{ customer[1] }}</td>
+                                <td>{{ customer[2] or '-' }}</td>
+                                <td>{{ customer[3] or '-' }}</td>
+                                <td>{{ customer[4] or '-' }}</td>
+                                <td>{{ customer[5] or '-' }}</td>
+                                <td>
+                                    {% if customer[6] %}
+                                        <a href="mailto:{{ customer[6] }}">{{ customer[6] }}</a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ customer[7] or '-' }}</td>
+                                <td>
+                                    {% if customer[8] %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('view_customer', customer_code=customer[0]) }}"
+                                           class="btn btn-sm btn-outline-primary" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('edit_customer', customer_code=customer[0]) }}"
+                                           class="btn btn-sm btn-outline-warning" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{{ url_for('sales_history') }}?customer={{ customer[1] }}"
+                                           class="btn btn-sm btn-outline-info" title="Sales History">
+                                            <i class="fas fa-history"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteCustomer({{ customer[0] }})" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if not customers %}
+                <div class="text-center py-4">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No customers found</h5>
+                    <p class="text-muted">Start by adding your first customer to the system.</p>
+                    <a href="{{ url_for('add_customer') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add First Customer
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Statistics -->
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <i class="fas fa-users fa-2x mb-2"></i>
+                <h5>{{ customers|length }}</h5>
+                <p class="mb-0">Total Customers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-success text-center">
+            <div class="card-body">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <h5>{{ customers|selectattr('8')|list|length }}</h5>
+                <p class="mb-0">Active Customers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-warning text-center">
+            <div class="card-body">
+                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                <h5>{{ customers|rejectattr('8')|list|length }}</h5>
+                <p class="mb-0">Inactive Customers</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-info text-center">
+            <div class="card-body">
+                <i class="fas fa-map-marker-alt fa-2x mb-2"></i>
+                <h5>{{ customers|map(attribute='3')|select|unique|list|length }}</h5>
+                <p class="mb-0">States</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Search and filter functionality
+document.getElementById('searchCustomers').addEventListener('input', filterTable);
+document.getElementById('stateFilter').addEventListener('change', filterTable);
+document.getElementById('statusFilter').addEventListener('change', filterTable);
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchCustomers').value.toLowerCase();
+    const stateFilter = document.getElementById('stateFilter').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    const table = document.getElementById('customersTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length > 0) {
+            const customerCode = cells[0].textContent.toLowerCase();
+            const customerName = cells[1].textContent.toLowerCase();
+            const state = cells[3].textContent.toLowerCase();
+            const statusBadge = cells[8].querySelector('.badge');
+            const isActive = statusBadge && statusBadge.classList.contains('bg-success');
+            
+            let showRow = true;
+            
+            if (searchTerm && !customerCode.includes(searchTerm) && !customerName.includes(searchTerm)) {
+                showRow = false;
+            }
+            
+            if (stateFilter && !state.includes(stateFilter)) {
+                showRow = false;
+            }
+            
+            if (statusFilter) {
+                const filterActive = statusFilter === 'true';
+                if (isActive !== filterActive) {
+                    showRow = false;
+                }
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        }
+    }
+}
+
+// Populate state filter
+function populateStateFilter() {
+    const states = new Set();
+    const table = document.getElementById('customersTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const stateCell = rows[i].getElementsByTagName('td')[3];
+        if (stateCell && stateCell.textContent.trim() !== '-') {
+            states.add(stateCell.textContent.trim());
+        }
+    }
+    
+    const stateFilter = document.getElementById('stateFilter');
+    Array.from(states).sort().forEach(state => {
+        const option = document.createElement('option');
+        option.value = state;
+        option.textContent = state;
+        stateFilter.appendChild(option);
+    });
+}
+
+// Action functions
+function viewCustomer(customerCode) {
+    alert('View customer functionality coming soon! Customer: ' + customerCode);
+}
+
+function editCustomer(customerCode) {
+    window.location.href = '/customers/edit/' + customerCode;
+}
+
+function viewSalesHistory(customerCode) {
+    alert('Sales history functionality coming soon! Customer: ' + customerCode);
+}
+
+function deleteCustomer(customerCode) {
+    if (confirm('Are you sure you want to delete customer ' + customerCode + '?')) {
+        // Create a form and submit it for DELETE request
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/customers/delete/' + customerCode;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    populateStateFilter();
+});
+</script>
+{% endblock %}

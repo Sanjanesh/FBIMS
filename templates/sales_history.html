@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Sales History - Inventory Management System{% endblock %}
+{% block page_title %}Sales History{% endblock %}
+
+{% block content %}
+<!-- Filter Section -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-filter"></i> Filters
+        </h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('sales_history') }}">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="customer" class="form-label">Customer</label>
+                    <input type="text" class="form-control" id="customer" name="customer" 
+                           value="{{ filters.customer }}" placeholder="Search customer...">
+                </div>
+                <div class="col-md-3">
+                    <label for="part" class="form-label">Part</label>
+                    <input type="text" class="form-control" id="part" name="part" 
+                           value="{{ filters.part }}" placeholder="Search part...">
+                </div>
+                <div class="col-md-2">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ filters.date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" 
+                           value="{{ filters.date_to }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+{% if summary_stats %}
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Invoices</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ summary_stats[0] or 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-invoice fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Line Items</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ summary_stats[1] or 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-list fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Quantity</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ summary_stats[2] or 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Total Value</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">₹{{ "%.2f"|format(summary_stats[3]) if summary_stats[3] else '0.00' }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-rupee-sign fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Sales History Table -->
+<div class="card shadow">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-history"></i> Sales History
+        </h6>
+    </div>
+    <div class="card-body">
+        {% if sales_data %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="salesHistoryTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Invoice No</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Part No</th>
+                        <th>Description</th>
+                        <th>Quantity</th>
+                        <th>Unit</th>
+                        <th>Rate</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in sales_data %}
+                    <tr>
+                        <td>{{ sale[0] }}</td>
+                        <td>{{ sale[1].strftime('%Y-%m-%d') if sale[1] else 'N/A' }}</td>
+                        <td>{{ sale[2] or 'N/A' }}</td>
+                        <td>{{ sale[3] }}</td>
+                        <td>{{ sale[4] or 'N/A' }}</td>
+                        <td>{{ sale[5] }}</td>
+                        <td>{{ sale[8] or 'N/A' }}</td>
+                        <td>₹{{ "%.2f"|format(sale[6]) if sale[6] else '0.00' }}</td>
+                        <td>₹{{ "%.2f"|format(sale[7]) if sale[7] else '0.00' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <i class="fas fa-search fa-3x text-gray-300 mb-3"></i>
+            <p class="text-muted">No sales history found matching your criteria.</p>
+            <a href="{{ url_for('sales_history') }}" class="btn btn-primary">
+                <i class="fas fa-refresh"></i> Clear Filters
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#salesHistoryTable').DataTable({
+        "pageLength": 25,
+        "order": [[ 1, "desc" ]],
+        "columnDefs": [
+            { "orderable": false, "targets": [] }
+        ]
+    });
+});
+</script>
+{% endblock %}

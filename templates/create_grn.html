@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Create GRN - Inventory Management System{% endblock %}
+{% block page_title %}Create Goods Receipt Note{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-truck"></i> Create GRN from PO #{{ po_header[0] }}
+                </h6>
+            </div>
+            <div class="card-body">
+                <!-- PO Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary">Purchase Order Details</h6>
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>PO Number:</strong></td>
+                                        <td>{{ po_header[0] }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>PO Date:</strong></td>
+                                        <td>{{ po_header[1].strftime('%Y-%m-%d') if po_header[1] else 'N/A' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Vendor:</strong></td>
+                                        <td>{{ po_header[2] or 'N/A' }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRN Form -->
+                <form method="POST" action="{{ url_for('create_grn', po_no=po_header[0]) }}">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="grn_date" class="form-label">GRN Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="grn_date" name="grn_date" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label for="remarks" class="form-label">Remarks</label>
+                            <input type="text" class="form-control" id="remarks" name="remarks" 
+                                   placeholder="Enter any remarks...">
+                        </div>
+                    </div>
+
+                    <!-- Line Items -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="m-0 font-weight-bold text-success">
+                                <i class="fas fa-list"></i> Items to Receive
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered" id="grnItemsTable">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Part No</th>
+                                            <th>Description</th>
+                                            <th>Unit</th>
+                                            <th>Ordered Qty</th>
+                                            <th>Already Received</th>
+                                            <th>Pending Qty</th>
+                                            <th>Receive Qty</th>
+                                            <th>Rate</th>
+                                            <th>Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for line in po_lines %}
+                                        <tr>
+                                            <td>
+                                                {{ line[0] }}
+                                                <input type="hidden" name="part_num[]" value="{{ line[0] }}">
+                                            </td>
+                                            <td>{{ line[1] or 'N/A' }}</td>
+                                            <td>{{ line[5] or 'N/A' }}</td>
+                                            <td>{{ line[2] }}</td>
+                                            <td>{{ line[6] }}</td>
+                                            <td class="text-warning"><strong>{{ line[7] }}</strong></td>
+                                            <td>
+                                                <input type="number" class="form-control receive-qty" 
+                                                       name="received_qty[]" step="0.01" min="0" 
+                                                       max="{{ line[7] }}" value="{{ line[7] }}"
+                                                       data-row-index="{{ loop.index0 }}">
+                                            </td>
+                                            <td>
+                                                <input type="number" class="form-control rate" 
+                                                       name="rate[]" step="0.01" min="0" 
+                                                       value="{{ line[3] }}"
+                                                       data-row-index="{{ loop.index0 }}">
+                                            </td>
+                                            <td>
+                                                <span class="amount" data-row-index="{{ loop.index0 }}">
+                                                    ₹{{ "%.2f"|format(line[7] * line[3]) if line[7] and line[3] else '0.00' }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="table-info">
+                                            <th colspan="8" class="text-end">Total Amount:</th>
+                                            <th id="totalAmount">₹0.00</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('purchase_orders') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Back to Purchase Orders
+                                </a>
+                                <div>
+                                    <button type="button" class="btn btn-warning" onclick="calculateAll()">
+                                        <i class="fas fa-calculator"></i> Recalculate
+                                    </button>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save"></i> Create GRN & Update Stock
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function calculateAmount(rowIndex) {
+    const qtyInput = document.querySelector(`input[name="received_qty[]"][data-row-index="${rowIndex}"]`);
+    const rateInput = document.querySelector(`input[name="rate[]"][data-row-index="${rowIndex}"]`);
+    const amountSpan = document.querySelector(`span.amount[data-row-index="${rowIndex}"]`);
+    
+    const qty = parseFloat(qtyInput.value) || 0;
+    const rate = parseFloat(rateInput.value) || 0;
+    const amount = qty * rate;
+    
+    amountSpan.textContent = `₹${amount.toFixed(2)}`;
+    
+    calculateTotal();
+}
+
+function calculateTotal() {
+    let total = 0;
+    document.querySelectorAll('span.amount').forEach(span => {
+        const amountText = span.textContent.replace('₹', '').replace(',', '');
+        total += parseFloat(amountText) || 0;
+    });
+    
+    document.getElementById('totalAmount').textContent = `₹${total.toFixed(2)}`;
+}
+
+function calculateAll() {
+    document.querySelectorAll('input[name="received_qty[]"]').forEach((input, index) => {
+        calculateAmount(index);
+    });
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Add event listeners to quantity and rate inputs
+    document.querySelectorAll('input[name="received_qty[]"], input[name="rate[]"]').forEach(input => {
+        input.addEventListener('input', function() {
+            const rowIndex = this.getAttribute('data-row-index');
+            calculateAmount(parseInt(rowIndex));
+        });
+    });
+    
+    // Initial calculation
+    calculateAll();
+    
+    // Set today's date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('grn_date').value = today;
+});
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    let hasItems = false;
+    document.querySelectorAll('input[name="received_qty[]"]').forEach(input => {
+        if (parseFloat(input.value) > 0) {
+            hasItems = true;
+        }
+    });
+    
+    if (!hasItems) {
+        e.preventDefault();
+        alert('Please enter at least one item quantity to receive.');
+        return false;
+    }
+    
+    return confirm('Are you sure you want to create this GRN? This will update the stock levels.');
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.table th, .table td {
+    vertical-align: middle;
+}
+
+.receive-qty, .rate {
+    width: 100px;
+}
+
+.amount {
+    font-weight: bold;
+    color: #28a745;
+}
+
+#totalAmount {
+    font-size: 1.1em;
+    color: #007bff;
+}
+
+.card-header h6 {
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}

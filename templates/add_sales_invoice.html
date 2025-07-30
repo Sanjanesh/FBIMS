@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}Add Sales Invoice - Inventory Management System{% endblock %}
+{% block page_title %}Create New Sales Invoice{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-plus"></i> Create New Sales Invoice
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_sales_invoice') }}" id="invoiceForm">
+                    <!-- Header Information -->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="inv_no" class="form-label">Invoice Number <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">SI</span>
+                                    <input type="number" class="form-control" id="inv_no" name="inv_no"
+                                           value="{{ next_inv_no }}" readonly
+                                           style="background-color: #f8f9fa; cursor: not-allowed;">
+                                </div>
+                                <small class="form-text text-muted">Auto-generated invoice number</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="inv_dt" class="form-label">Invoice Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="inv_dt" name="inv_dt" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="customer_code" class="form-label">Customer <span class="text-danger">*</span></label>
+                                <select class="form-select" id="customer_code" name="customer_code" required>
+                                    <option value="">Select Customer</option>
+                                    {% for customer in customers %}
+                                    <option value="{{ customer[0] }}">{{ customer[1] }} ({{ customer[0] }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="remarks" class="form-label">Remarks</label>
+                                <textarea class="form-control" id="remarks" name="remarks" rows="2" 
+                                          placeholder="Any additional notes or instructions"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Line Items Section -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h5 class="mb-3">
+                                <i class="fas fa-list"></i> Line Items
+                                <button type="button" class="btn btn-sm btn-success ms-2" onclick="addLineItem()">
+                                    <i class="fas fa-plus"></i> Add Item
+                                </button>
+                            </h5>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="lineItemsTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th width="30%">Part</th>
+                                    <th width="12%">Quantity</th>
+                                    <th width="12%">Rate</th>
+                                    <th width="12%">Tax %</th>
+                                    <th width="12%">Amount</th>
+                                    <th width="12%">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineItemsBody">
+                                <tr>
+                                    <td>
+                                        <select class="form-select" name="part_num[]" onchange="updateAmount(this)" required>
+                                            <option value="">Select Part</option>
+                                            {% for part in parts %}
+                                            <option value="{{ part[0] }}">{{ part[1] }} ({{ part[0] }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control" name="quantity[]"
+                                               step="0.01" min="0.01" max="999999" onchange="updateAmount(this)" required>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control" name="rate[]"
+                                               step="0.01" min="0.01" max="999999" onchange="updateAmount(this)" required>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control" name="tax_percent[]"
+                                               step="0.01" min="0" max="100" value="0" onchange="updateAmount(this)">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control amount" readonly>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="removeLineItem(this)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-info">
+                                    <td colspan="4" class="text-end"><strong>Total Amount:</strong></td>
+                                    <td><strong id="totalAmount">0.00</strong></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="row">
+                        <div class="col-12">
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('sales_invoices') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Create Sales Invoice
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Set today's date as default
+document.getElementById('inv_dt').value = new Date().toISOString().split('T')[0];
+
+function addLineItem() {
+    const tbody = document.getElementById('lineItemsBody');
+    const newRow = tbody.rows[0].cloneNode(true);
+    
+    // Clear values in the new row
+    const inputs = newRow.querySelectorAll('input, select');
+    inputs.forEach(input => {
+        if (input.type === 'number') {
+            if (input.name === 'tax_percent[]') {
+                input.value = '0'; // Default tax to 0
+            } else {
+                input.value = '';
+            }
+        } else if (input.tagName === 'SELECT') {
+            input.selectedIndex = 0;
+        }
+    });
+    
+    tbody.appendChild(newRow);
+    updateTotal();
+}
+
+function removeLineItem(button) {
+    const tbody = document.getElementById('lineItemsBody');
+    if (tbody.rows.length > 1) {
+        button.closest('tr').remove();
+        updateTotal();
+    } else {
+        alert('At least one line item is required.');
+    }
+}
+
+function updateAmount(element) {
+    const row = element.closest('tr');
+
+    // If this is a part selection dropdown, fetch part details
+    if (element.name === 'part_num[]' && element.value) {
+        fetchPartDetails(element.value, row);
+    }
+
+    const quantity = parseFloat(row.querySelector('input[name="quantity[]"]').value) || 0;
+    const rate = parseFloat(row.querySelector('input[name="rate[]"]').value) || 0;
+    const taxPercent = parseFloat(row.querySelector('input[name="tax_percent[]"]').value) || 0;
+
+    // Validate constraints
+    if (quantity > 999999) {
+        element.value = 999999;
+        alert('Quantity cannot exceed 999,999');
+        return;
+    }
+    if (rate > 999999) {
+        element.value = 999999;
+        alert('Rate cannot exceed 999,999');
+        return;
+    }
+    if (taxPercent > 100) {
+        element.value = 100;
+        alert('Tax percentage cannot exceed 100%');
+        return;
+    }
+
+    // Calculate amount with tax
+    const baseAmount = quantity * rate;
+    const taxAmount = (baseAmount * taxPercent) / 100;
+    const totalAmount = baseAmount + taxAmount;
+
+    row.querySelector('.amount').value = totalAmount.toFixed(2);
+    updateTotal();
+}
+
+function fetchPartDetails(partNum, row) {
+    fetch(`/api/part/${partNum}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error fetching part details:', data.error);
+                return;
+            }
+
+            // Auto-populate tax percentage from part data
+            const taxPercentInput = row.querySelector('input[name="tax_percent[]"]');
+            if (taxPercentInput && data.tax_percent) {
+                taxPercentInput.value = data.tax_percent;
+            }
+
+            // Auto-populate selling price if rate field is empty
+            const rateInput = row.querySelector('input[name="rate[]"]');
+            if (rateInput && !rateInput.value && data.sell_price) {
+                rateInput.value = data.sell_price;
+            }
+
+            // Recalculate amount after populating fields
+            updateAmount(taxPercentInput);
+        })
+        .catch(error => {
+            console.error('Error fetching part details:', error);
+        });
+}
+
+function updateTotal() {
+    const amounts = document.querySelectorAll('.amount');
+    let total = 0;
+    
+    amounts.forEach(amount => {
+        total += parseFloat(amount.value) || 0;
+    });
+    
+    document.getElementById('totalAmount').textContent = total.toFixed(2);
+}
+
+// Form validation
+document.getElementById('invoiceForm').addEventListener('submit', function(e) {
+    const invNo = document.getElementById('inv_no').value;
+    const invDt = document.getElementById('inv_dt').value;
+    const customerCode = document.getElementById('customer_code').value;
+    
+    if (!invNo || !invDt || !customerCode) {
+        e.preventDefault();
+        alert('Please fill in all required header fields.');
+        return false;
+    }
+    
+    // Check if at least one line item has all required fields
+    const tbody = document.getElementById('lineItemsBody');
+    let hasValidLineItem = false;
+    
+    for (let row of tbody.rows) {
+        const partNum = row.querySelector('select[name="part_num[]"]').value;
+        const quantity = row.querySelector('input[name="quantity[]"]').value;
+        const rate = row.querySelector('input[name="rate[]"]').value;
+        
+        if (partNum && quantity && rate) {
+            hasValidLineItem = true;
+            break;
+        }
+    }
+    
+    if (!hasValidLineItem) {
+        e.preventDefault();
+        alert('Please add at least one complete line item.');
+        return false;
+    }
+    
+    return true;
+});
+
+// Initialize total calculation
+updateTotal();
+</script>
+{% endblock %}

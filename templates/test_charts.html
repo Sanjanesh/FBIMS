@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chart Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Chart.js Test</h1>
+    <div style="width: 400px; height: 400px;">
+        <canvas id="testChart"></canvas>
+    </div>
+
+    <script>
+        console.log('Chart.js available:', typeof Chart !== 'undefined');
+        console.log('Chart version:', Chart.version);
+        
+        const ctx = document.getElementById('testChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Red', 'Blue', 'Yellow'],
+                datasets: [{
+                    data: [12, 19, 3],
+                    backgroundColor: ['#ff6384', '#36a2eb', '#ffce56']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+        console.log('Test chart created:', chart);
+    </script>
+</body>
+</html>

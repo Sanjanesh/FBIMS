@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Inventory Management System{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Statistics Cards -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Total Parts</div>
+                        <div class="h5 mb-0 font-weight-bold">{{ stats.total_parts }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-cogs fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card-success">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Total Vendors</div>
+                        <div class="h5 mb-0 font-weight-bold">{{ stats.total_vendors }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-truck fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card-info">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Total Customers</div>
+                        <div class="h5 mb-0 font-weight-bold">{{ stats.total_customers }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card-warning">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Active Purchase Orders</div>
+                        <div class="h5 mb-0 font-weight-bold">{{ stats.pending_pos }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-shopping-cart fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Critical Business Analytics - 3 Key Charts -->
+<div class="row">
+    <!-- 1. Business Performance Overview -->
+    <div class="col-xl-4 col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 bg-primary text-white">
+                <h6 class="m-0 font-weight-bold">💰 Revenue vs Expenses (Last 6 Months)</h6>
+                <small>Sales Income vs Purchase Costs</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4 pb-2">
+                    <canvas id="revenueExpenseChart" width="400" height="400"></canvas>
+                </div>
+                <div class="text-center mt-3">
+                    <small class="text-muted">Profit Margin Analysis</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Top Business Partners -->
+    <div class="col-xl-4 col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 bg-success text-white">
+                <h6 class="m-0 font-weight-bold">🏆 Top Business Partners</h6>
+                <small>Key Vendors & Customers by Value</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4 pb-2">
+                    <canvas id="topPartnersChart" width="400" height="400"></canvas>
+                </div>
+                <div class="text-center mt-3">
+                    <small class="text-muted">Relationship Priority Matrix</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Operational Efficiency -->
+    <div class="col-xl-4 col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 bg-warning text-white">
+                <h6 class="m-0 font-weight-bold">⚡ Operational Status</h6>
+                <small>Active vs Pending Operations</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-pie pt-4 pb-2">
+                    <canvas id="operationalChart" width="400" height="400"></canvas>
+                </div>
+                <div class="text-center mt-3">
+                    <small class="text-muted">Workflow Efficiency</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+<div class="row">
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 bg-info text-white">
+                <h6 class="m-0 font-weight-bold">📋 Recent Transactions</h6>
+                <small>Latest business activities</small>
+            </div>
+            <div class="card-body">
+                {% if recent_transactions %}
+                    {% for transaction in recent_transactions %}
+                    <div class="d-flex align-items-center mb-3 p-2 border-left border-info">
+                        <div class="mr-3">
+                            <div class="icon-circle bg-info">
+                                <i class="fas fa-file-alt text-white"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="small text-gray-500">{{ transaction[2] }}</div>
+                            <div class="font-weight-bold">{{ transaction[0] }} #{{ transaction[1] }}</div>
+                            <div class="small">{{ transaction[3] }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No recent transactions found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Business Insights -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 bg-dark text-white">
+                <h6 class="m-0 font-weight-bold">💡 Business Insights</h6>
+                <small>Key performance indicators</small>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <div class="border-right">
+                            <h4 class="text-success">{{ total_parts }}</h4>
+                            <small class="text-muted">Total Parts</small>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <h4 class="text-primary">{{ total_vendors }}</h4>
+                        <small class="text-muted">Active Vendors</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="border-right">
+                            <h4 class="text-info">{{ total_customers }}</h4>
+                            <small class="text-muted">Active Customers</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-warning">{{ pending_orders }}</h4>
+                        <small class="text-muted">Pending Orders</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('add_part') }}" class="btn btn-primary btn-block">
+                            <i class="fas fa-plus"></i> Add New Part
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('add_vendor') }}" class="btn btn-success btn-block">
+                            <i class="fas fa-plus"></i> Add New Vendor
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('add_customer') }}" class="btn btn-info btn-block">
+                            <i class="fas fa-plus"></i> Add New Customer
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('purchase_orders') }}" class="btn btn-warning btn-block">
+                            <i class="fas fa-plus"></i> Create Purchase Order
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .icon-circle {
+        height: 2.5rem;
+        width: 2.5rem;
+        border-radius: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-block {
+        width: 100%;
+    }
+    .chart-pie {
+        position: relative;
+        height: 15rem;
+        width: 100%;
+    }
+    .chart-area {
+        position: relative;
+        height: 20rem;
+        width: 100%;
+    }
+    .card {
+        transition: transform 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Critical Business Analytics Dashboard
+window.addEventListener('load', function() {
+    console.log('Loading critical business analytics...');
+
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js not loaded!');
+        return;
+    }
+
+    // Load critical business data
+    fetch('/api/dashboard_stats')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Business analytics data received:', data);
+
+            // 1. REVENUE vs EXPENSES Chart - Most Critical for Business Health
+            const revenueCanvas = document.getElementById('revenueExpenseChart');
+            if (revenueCanvas && data.revenue_expense) {
+                try {
+                    new Chart(revenueCanvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(data.revenue_expense),
+                            datasets: [{
+                                data: Object.values(data.revenue_expense),
+                                backgroundColor: [
+                                    '#28a745', // Green for Sales Revenue
+                                    '#dc3545', // Red for Purchase Costs
+                                    '#ffc107'  // Yellow for Profit
+                                ],
+                                borderWidth: 3,
+                                borderColor: '#fff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        padding: 15,
+                                        usePointStyle: true,
+                                        font: { size: 11, weight: 'bold' }
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.label || '';
+                                            const value = context.parsed;
+                                            return `${label}: ₹${value.toLocaleString('en-IN')}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    console.log('Revenue vs Expense chart created');
+                } catch (error) {
+                    console.error('Error creating revenue chart:', error);
+                }
+            }
+
+            // 2. TOP BUSINESS PARTNERS Chart - Critical for Relationship Management
+            const partnersCanvas = document.getElementById('topPartnersChart');
+            if (partnersCanvas && data.top_partners) {
+                try {
+                    new Chart(partnersCanvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(data.top_partners),
+                            datasets: [{
+                                data: Object.values(data.top_partners),
+                                backgroundColor: [
+                                    '#667eea', '#764ba2', '#56ab2f',
+                                    '#f093fb', '#4facfe', '#43e97b'
+                                ],
+                                borderWidth: 3,
+                                borderColor: '#fff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        padding: 12,
+                                        usePointStyle: true,
+                                        font: { size: 10 }
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.label || '';
+                                            const value = context.parsed;
+                                            return `${label}: ₹${value.toLocaleString('en-IN')}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    console.log('Top Partners chart created');
+                } catch (error) {
+                    console.error('Error creating partners chart:', error);
+                }
+            }
+
+            // 3. OPERATIONAL EFFICIENCY Chart - Critical for Workflow Management
+            const operationalCanvas = document.getElementById('operationalChart');
+            if (operationalCanvas && data.operational_status) {
+                try {
+                    new Chart(operationalCanvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(data.operational_status),
+                            datasets: [{
+                                data: Object.values(data.operational_status),
+                                backgroundColor: [
+                                    '#ffc107', // Yellow for Active POs
+                                    '#dc3545', // Red for Pending GRNs
+                                    '#fd7e14', // Orange for Active Invoices
+                                    '#28a745'  // Green for Completed Operations
+                                ],
+                                borderWidth: 3,
+                                borderColor: '#fff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        padding: 12,
+                                        usePointStyle: true,
+                                        font: { size: 10, weight: 'bold' }
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.label || '';
+                                            const value = context.parsed;
+                                            return `${label}: ${value} items`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    console.log('Operational Status chart created');
+                } catch (error) {
+                    console.error('Error creating operational chart:', error);
+                }
+            }
+
+        })
+        .catch(error => {
+            console.error('Error loading business analytics:', error);
+        });
+
+}); // End window load event
+
+</script>
+{% endblock %}

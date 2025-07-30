@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}View Part #{{ part_details[1] }} - Inventory Management System{% endblock %}
+{% block page_title %}Part Details - {{ part_details[2] }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-cube"></i> Part Information
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Part Number:</strong></td>
+                                <td>{{ part_details[1] }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Description:</strong></td>
+                                <td>{{ part_details[2] }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Type:</strong></td>
+                                <td>{{ part_details[3] or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Category:</strong></td>
+                                <td>{{ part_details[4] or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Unit:</strong></td>
+                                <td>{{ part_details[14] or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>HSN Code:</strong></td>
+                                <td>{{ part_details[7] or 'N/A' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Purchase Price:</strong></td>
+                                <td>₹{{ "%.2f"|format(part_details[5]) if part_details[5] else '0.00' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Selling Price:</strong></td>
+                                <td>₹{{ "%.2f"|format(part_details[6]) if part_details[6] else '0.00' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tax Type:</strong></td>
+                                <td>{{ part_details[15] or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tax Percentage:</strong></td>
+                                <td>{% if part_details[9] %}{{ part_details[9] }}%{% else %}N/A{% endif %}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Costing Method:</strong></td>
+                                <td>{{ part_details[10] or 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    {% if part_details[12] %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('parts') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Parts
+                            </a>
+                            <div>
+                                <a href="{{ url_for('edit_part', part_num=part_details[1]) }}" class="btn btn-warning">
+                                    <i class="fas fa-edit"></i> Edit Part
+                                </a>
+                                <button class="btn btn-primary" onclick="window.print()">
+                                    <i class="fas fa-print"></i> Print
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Stock Information -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="fas fa-boxes"></i> Stock Information
+                </h6>
+            </div>
+            <div class="card-body text-center">
+                <div class="row">
+                    <div class="col-12">
+                        <h3 class="text-success">{{ stock_info[0] if stock_info[0] else 0 }}</h3>
+                        <p class="mb-2">Current Stock</p>
+                        <small class="text-muted">
+                            Total Transactions: {{ stock_info[1] if stock_info[1] else 0 }}<br>
+                            Last Updated: {{ stock_info[2].strftime('%Y-%m-%d') if stock_info[2] else 'Never' }}
+                        </small>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <a href="{{ url_for('stock_history', part_num=part_details[1]) }}" class="btn btn-sm btn-outline-info">
+                        <i class="fas fa-history"></i> View History
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="fas fa-chart-bar"></i> Quick Stats
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h5 class="text-primary">{{ purchase_history|length }}</h5>
+                        <small>Recent Purchases</small>
+                    </div>
+                    <div class="col-6">
+                        <h5 class="text-success">{{ sales_history|length }}</h5>
+                        <small>Recent Sales</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Purchase History -->
+{% if purchase_history %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-shopping-cart"></i> Recent Purchase History
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>PO No</th>
+                                <th>Date</th>
+                                <th>Vendor</th>
+                                <th>Quantity</th>
+                                <th>Rate</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for purchase in purchase_history %}
+                            <tr>
+                                <td>{{ purchase[0] }}</td>
+                                <td>{{ purchase[1].strftime('%Y-%m-%d') if purchase[1] else 'N/A' }}</td>
+                                <td>{{ purchase[2] or 'N/A' }}</td>
+                                <td>{{ purchase[3] }}</td>
+                                <td>₹{{ "%.2f"|format(purchase[4]) if purchase[4] else '0.00' }}</td>
+                                <td>₹{{ "%.2f"|format(purchase[5]) if purchase[5] else '0.00' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Sales History -->
+{% if sales_history %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="fas fa-file-invoice"></i> Recent Sales History
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Invoice No</th>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Quantity</th>
+                                <th>Rate</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in sales_history %}
+                            <tr>
+                                <td>{{ sale[0] }}</td>
+                                <td>{{ sale[1].strftime('%Y-%m-%d') if sale[1] else 'N/A' }}</td>
+                                <td>{{ sale[2] or 'N/A' }}</td>
+                                <td>{{ sale[3] }}</td>
+                                <td>₹{{ "%.2f"|format(sale[4]) if sale[4] else '0.00' }}</td>
+                                <td>₹{{ "%.2f"|format(sale[5]) if sale[5] else '0.00' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .btn, .card-header .btn {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    body {
+        background: white !important;
+    }
+}
+</style>
+{% endblock %}

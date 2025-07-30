@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Indents - Inventory Management System{% endblock %}
+{% block page_title %}Indent Management{% endblock %}
+
+{% block content %}
+<!-- Summary Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                <h5>{{ stats.total_indents }}</h5>
+                <p class="mb-0">Total Indents</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card-warning text-center">
+            <div class="card-body">
+                <i class="fas fa-clock fa-2x mb-2"></i>
+                <h5>{{ stats.pending_indents }}</h5>
+                <p class="mb-0">Pending</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card-success text-center">
+            <div class="card-body">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <h5>{{ stats.approved_indents }}</h5>
+                <p class="mb-0">Approved</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card-danger text-center">
+            <div class="card-body">
+                <i class="fas fa-times-circle fa-2x mb-2"></i>
+                <h5>{{ stats.rejected_indents }}</h5>
+                <p class="mb-0">Rejected</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Indents List -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-clipboard-list me-2"></i>
+            Indent Requests
+        </h5>
+        <a href="{{ url_for('add_indent') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add New Indent
+        </a>
+    </div>
+    <div class="card-body">
+        {% if indents %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Indent ID</th>
+                        <th>Date</th>
+                        <th>Department</th>
+                        <th>Requested By</th>
+                        <th>Status</th>
+                        <th>Line Items</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for indent in indents %}
+                    <tr>
+                        <td>
+                            <strong>{{ indent[0] }}</strong>
+                        </td>
+                        <td>{{ indent[1].strftime('%d-%m-%Y') if indent[1] else 'N/A' }}</td>
+                        <td>{{ indent[2] or 'N/A' }}</td>
+                        <td>{{ indent[3] or 'N/A' }}</td>
+                        <td>
+                            {% if indent[4] == 'PENDING' %}
+                                <span class="badge bg-warning">Pending</span>
+                            {% elif indent[4] == 'APPROVED' %}
+                                <span class="badge bg-success">Approved</span>
+                            {% elif indent[4] == 'REJECTED' %}
+                                <span class="badge bg-danger">Rejected</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ indent[4] or 'Unknown' }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ indent[6] }} items</span>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('view_indent', indent_id=indent[0]) }}" 
+                                   class="btn btn-sm btn-outline-primary" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('edit_indent', indent_id=indent[0]) }}" 
+                                   class="btn btn-sm btn-outline-secondary" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% if indent[4] == 'PENDING' %}
+                                <button class="btn btn-sm btn-outline-success" 
+                                        onclick="approveIndent({{ indent[0] }})" title="Approve">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="rejectIndent({{ indent[0] }})" title="Reject">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                {% endif %}
+                                {% if indent[4] == 'APPROVED' %}
+                                <button class="btn btn-sm btn-outline-info" 
+                                        onclick="createPOFromIndent({{ indent[0] }})" title="Create PO">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No indents found</h5>
+            <p class="text-muted">Start by creating your first indent request.</p>
+            <a href="{{ url_for('add_indent') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create First Indent
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function approveIndent(indentId) {
+    if (confirm('Are you sure you want to approve this indent request?')) {
+        fetch(`/indents/approve/${indentId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error approving indent: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error approving indent: ' + error);
+        });
+    }
+}
+
+function rejectIndent(indentId) {
+    if (confirm('Are you sure you want to reject this indent request?')) {
+        fetch(`/indents/reject/${indentId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error rejecting indent: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error rejecting indent: ' + error);
+        });
+    }
+}
+
+function createPOFromIndent(indentId) {
+    if (confirm('Create a Purchase Order from this approved indent?')) {
+        window.location.href = `/purchase_orders/add?indent_id=${indentId}`;
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Sales Invoice #{{ invoice_header[1] }} - Inventory Management System{% endblock %}
+{% block page_title %}Sales Invoice #{{ invoice_header[1] }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-file-invoice"></i> Sales Invoice Details
+                </h6>
+                <div>
+                    <button class="btn btn-sm btn-success" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                    <button class="btn btn-sm btn-info" onclick="emailInvoice()">
+                        <i class="fas fa-envelope"></i> Email
+                    </button>
+                    <a href="{{ url_for('sales_invoices') }}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Header Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5 class="text-primary">Invoice Information</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Invoice Number:</strong></td>
+                                <td>{{ invoice_header[1] }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Invoice Date:</strong></td>
+                                <td>{{ invoice_header[2].strftime('%d-%m-%Y') if invoice_header[2] else '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    {% if invoice_header[5] %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if invoice_header[8] %}
+                            <tr>
+                                <td><strong>Remarks:</strong></td>
+                                <td>{{ invoice_header[8] }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="text-primary">Customer Information</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Customer Name:</strong></td>
+                                <td>{{ invoice_header[9] or 'Unknown Customer' }}</td>
+                            </tr>
+                            {% if invoice_header[10] %}
+                            <tr>
+                                <td><strong>Address:</strong></td>
+                                <td>{{ invoice_header[10] }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if invoice_header[11] and invoice_header[12] %}
+                            <tr>
+                                <td><strong>Location:</strong></td>
+                                <td>{{ invoice_header[11] }}, {{ invoice_header[12] }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if invoice_header[13] %}
+                            <tr>
+                                <td><strong>Phone:</strong></td>
+                                <td>{{ invoice_header[13] }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if invoice_header[14] %}
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td><a href="mailto:{{ invoice_header[14] }}">{{ invoice_header[14] }}</a></td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Line Items -->
+                <div class="row">
+                    <div class="col-12">
+                        <h5 class="text-primary mb-3">
+                            <i class="fas fa-list"></i> Line Items
+                        </h5>
+                        
+                        {% if invoice_lines %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>S.No</th>
+                                        <th>Part Number</th>
+                                        <th>Description</th>
+                                        <th>Unit</th>
+                                        <th class="text-end">Quantity</th>
+                                        <th class="text-end">Rate</th>
+                                        <th class="text-end">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for line in invoice_lines %}
+                                    <tr>
+                                        <td>{{ line[2] }}</td>
+                                        <td><strong>{{ line[3] }}</strong></td>
+                                        <td>{{ line[13] or 'N/A' }}</td>
+                                        <td>{{ line[14] or '-' }}</td>
+                                        <td class="text-end">{{ "%.2f"|format(line[5]) if line[5] else '0.00' }}</td>
+                                        <td class="text-end">₹{{ "%.2f"|format(line[7]) if line[7] else '0.00' }}</td>
+                                        <td class="text-end">₹{{ "%.2f"|format(line[9]) if line[9] else '0.00' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-info">
+                                    <tr>
+                                        <td colspan="6" class="text-end"><strong>Total Amount:</strong></td>
+                                        <td class="text-end"><strong>₹{{ "%.2f"|format(invoice_lines|map(attribute='9')|select|sum) if invoice_lines else 0 }}</strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No line items found for this sales invoice.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-list fa-2x mb-2"></i>
+                                <h5>{{ invoice_lines|length }}</h5>
+                                <p class="mb-0">Line Items</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card-success text-center">
+                            <div class="card-body">
+                                <i class="fas fa-boxes fa-2x mb-2"></i>
+                                <h5>{{ invoice_lines|map(attribute='5')|select|sum|round(2) if invoice_lines else 0 }}</h5>
+                                <p class="mb-0">Total Quantity</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card-info text-center">
+                            <div class="card-body">
+                                <i class="fas fa-rupee-sign fa-2x mb-2"></i>
+                                <h5>₹{{ "%.0f"|format(invoice_lines|map(attribute='9')|select|sum) if invoice_lines else 0 }}</h5>
+                                <p class="mb-0">Total Value</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card-warning text-center">
+                            <div class="card-body">
+                                <i class="fas fa-calendar fa-2x mb-2"></i>
+                                <h5>{{ invoice_header[2].strftime('%d %b') if invoice_header[2] else 'N/A' }}</h5>
+                                <p class="mb-0">Invoice Date</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .btn, .card-header .btn {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .card-body {
+        padding: 0 !important;
+    }
+    
+    body {
+        background: white !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function emailInvoice() {
+    alert('Email invoice functionality coming soon!');
+}
+</script>
+{% endblock %}

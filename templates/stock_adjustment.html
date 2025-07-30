@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Adjustment - Inventory Management System{% endblock %}
+{% block page_title %}Stock Adjustment{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-balance-scale"></i> Stock Adjustment
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Stock Adjustment</strong> is used to correct stock discrepancies due to physical count differences, 
+                    damaged goods, or other inventory adjustments.
+                </div>
+
+                <form method="POST" action="{{ url_for('stock_adjustment') }}" id="adjustmentForm">
+                    <!-- Part Selection -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="part_num" class="form-label">Select Part <span class="text-danger">*</span></label>
+                                <select class="form-select" id="part_num" name="part_num" required onchange="loadCurrentStock()">
+                                    <option value="">Choose a part...</option>
+                                    {% for part in parts %}
+                                    <option value="{{ part[0] }}">{{ part[1] }} ({{ part[0] }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Current Stock</label>
+                                <div class="form-control-plaintext" id="currentStock">
+                                    <span class="text-muted">Select a part to view current stock</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Adjustment Details -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="adjustment_type" class="form-label">Adjustment Type <span class="text-danger">*</span></label>
+                                <select class="form-select" id="adjustment_type" name="adjustment_type" required onchange="updatePreview()">
+                                    <option value="">Select Type</option>
+                                    <option value="INCREASE">Increase Stock (+)</option>
+                                    <option value="DECREASE">Decrease Stock (-)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="quantity" class="form-label">Adjustment Quantity <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="quantity" name="quantity"
+                                       step="0.01" min="0.01" max="999999" onchange="updatePreview()" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reason and Remarks -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="reason" class="form-label">Reason <span class="text-danger">*</span></label>
+                                <select class="form-select" id="reason" name="reason" required>
+                                    <option value="">Select Reason</option>
+                                    <option value="Physical Count Difference">Physical Count Difference</option>
+                                    <option value="Damaged Goods">Damaged Goods</option>
+                                    <option value="Expired Items">Expired Items</option>
+                                    <option value="Lost/Stolen">Lost/Stolen</option>
+                                    <option value="System Error Correction">System Error Correction</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="remarks" class="form-label">Additional Remarks</label>
+                                <textarea class="form-control" id="remarks" name="remarks" rows="3" 
+                                          placeholder="Provide additional details about the adjustment"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Section -->
+                    <div class="row" id="previewSection" style="display: none;">
+                        <div class="col-12">
+                            <div class="alert alert-warning">
+                                <h6><i class="fas fa-exclamation-triangle"></i> Adjustment Preview</h6>
+                                <div id="previewContent"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="row">
+                        <div class="col-12">
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('stock_management') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Cancel
+                                </a>
+                                <div>
+                                    <button type="button" class="btn btn-info me-2" onclick="previewAdjustment()">
+                                        <i class="fas fa-eye"></i> Preview
+                                    </button>
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="fas fa-balance-scale"></i> Process Adjustment
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Adjustments -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-history"></i> Recent Stock Adjustments
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Part</th>
+                                <th>Type</th>
+                                <th>Quantity</th>
+                                <th>Reason</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentAdjustments">
+                            <tr>
+                                <td>2024-01-15</td>
+                                <td>Sample Part 001</td>
+                                <td><span class="badge bg-success">INCREASE</span></td>
+                                <td>+10</td>
+                                <td>Physical Count Difference</td>
+                                <td>Found additional stock during audit</td>
+                            </tr>
+                            <tr>
+                                <td>2024-01-14</td>
+                                <td>Sample Part 002</td>
+                                <td><span class="badge bg-danger">DECREASE</span></td>
+                                <td>-5</td>
+                                <td>Damaged Goods</td>
+                                <td>Water damage during storage</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Simulated current stock data
+const stockData = {};
+
+function loadCurrentStock() {
+    const partNum = document.getElementById('part_num').value;
+    const currentStockDiv = document.getElementById('currentStock');
+    
+    if (!partNum) {
+        currentStockDiv.innerHTML = '<span class="text-muted">Select a part to view current stock</span>';
+        return;
+    }
+    
+    // Simulate loading current stock
+    currentStockDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+    
+    setTimeout(() => {
+        const stockLevel = Math.floor(Math.random() * 100) + 10;
+        const stockStatus = stockLevel <= 10 ? 'danger' : stockLevel < 30 ? 'warning' : 'success';
+        
+        currentStockDiv.innerHTML = `
+            <span class="badge bg-${stockStatus} fs-6">${stockLevel} units</span>
+            <small class="text-muted ms-2">Last updated: ${new Date().toLocaleDateString()}</small>
+        `;
+        
+        stockData[partNum] = { currentStock: stockLevel };
+        updatePreview();
+    }, 500);
+}
+
+function updatePreview() {
+    const partNum = document.getElementById('part_num').value;
+    const adjustmentType = document.getElementById('adjustment_type').value;
+    const quantity = parseFloat(document.getElementById('quantity').value) || 0;
+    
+    if (partNum && adjustmentType && quantity && stockData[partNum]) {
+        const currentStock = stockData[partNum].currentStock;
+        const newStock = adjustmentType === 'INCREASE' ? currentStock + quantity : currentStock - quantity;
+        
+        const previewContent = `
+            <strong>Current Stock:</strong> ${currentStock} units<br>
+            <strong>Adjustment:</strong> ${adjustmentType === 'INCREASE' ? '+' : '-'}${quantity} units<br>
+            <strong>New Stock Level:</strong> <span class="badge bg-${newStock <= 0 ? 'danger' : newStock < 10 ? 'warning' : 'success'}">${newStock} units</span>
+        `;
+        
+        document.getElementById('previewContent').innerHTML = previewContent;
+    }
+}
+
+function previewAdjustment() {
+    const partNum = document.getElementById('part_num').value;
+    const adjustmentType = document.getElementById('adjustment_type').value;
+    const quantity = parseFloat(document.getElementById('quantity').value) || 0;
+    const reason = document.getElementById('reason').value;
+    const remarks = document.getElementById('remarks').value;
+    
+    if (!partNum || !adjustmentType || !quantity || !reason) {
+        alert('Please fill in all required fields before previewing.');
+        return;
+    }
+    
+    if (!stockData[partNum]) {
+        alert('Please wait for current stock to load.');
+        return;
+    }
+    
+    const currentStock = stockData[partNum].currentStock;
+    const newStock = adjustmentType === 'INCREASE' ? currentStock + quantity : currentStock - quantity;
+    const partName = document.getElementById('part_num').options[document.getElementById('part_num').selectedIndex].text;
+    
+    const previewContent = `
+        <strong>Part:</strong> ${partName}<br>
+        <strong>Current Stock:</strong> ${currentStock} units<br>
+        <strong>Adjustment Type:</strong> ${adjustmentType === 'INCREASE' ? 'Increase (+)' : 'Decrease (-)'}<br>
+        <strong>Adjustment Quantity:</strong> ${quantity} units<br>
+        <strong>New Stock Level:</strong> <span class="badge bg-${newStock <= 0 ? 'danger' : newStock < 10 ? 'warning' : 'success'}">${newStock} units</span><br>
+        <strong>Reason:</strong> ${reason}<br>
+        ${remarks ? `<strong>Remarks:</strong> ${remarks}` : ''}
+    `;
+    
+    document.getElementById('previewContent').innerHTML = previewContent;
+    document.getElementById('previewSection').style.display = 'block';
+}
+
+// Form validation
+document.getElementById('adjustmentForm').addEventListener('submit', function(e) {
+    const partNum = document.getElementById('part_num').value;
+    const adjustmentType = document.getElementById('adjustment_type').value;
+    const quantity = document.getElementById('quantity').value;
+    const reason = document.getElementById('reason').value;
+    
+    if (!partNum || !adjustmentType || !quantity || !reason) {
+        e.preventDefault();
+        alert('Please fill in all required fields.');
+        return false;
+    }
+    
+    if (parseFloat(quantity) <= 0) {
+        e.preventDefault();
+        alert('Adjustment quantity must be greater than 0.');
+        return false;
+    }
+    
+    // Confirm adjustment
+    const confirmMessage = `Are you sure you want to ${adjustmentType.toLowerCase()} stock by ${quantity} units?`;
+    if (!confirm(confirmMessage)) {
+        e.preventDefault();
+        return false;
+    }
+    
+    return true;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Indent #{{ indent_details[1] }} - Inventory Management System{% endblock %}
+{% block page_title %}Edit Indent Request #{{ indent_details[1] }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-edit me-2"></i>
+            Edit Indent Request #{{ indent_details[1] }}
+        </h5>
+    </div>
+    <div class="card-body">
+        <form id="indentForm" method="POST" action="{{ url_for('update_indent', indent_id=indent_details[1]) }}">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="indent_id" class="form-label">Indent Number <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">IN</span>
+                            <input type="number" class="form-control" id="indent_id" name="indent_id"
+                                   value="{{ indent_details[1] }}" readonly
+                                   style="background-color: #f8f9fa; cursor: not-allowed;">
+                        </div>
+                        <small class="form-text text-muted">Indent number cannot be changed</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="indent_dt" class="form-label">Indent Date <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="indent_dt" name="indent_dt"
+                               value="{{ indent_details[2].strftime('%Y-%m-%d') if indent_details[2] else '' }}" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="department" class="form-label">Department <span class="text-danger">*</span></label>
+                        <select class="form-control" id="department" name="department" required>
+                            <option value="">Select Department</option>
+                            <option value="PRODUCTION" {% if indent_details[3] == 'PRODUCTION' %}selected{% endif %}>Production</option>
+                            <option value="MAINTENANCE" {% if indent_details[3] == 'MAINTENANCE' %}selected{% endif %}>Maintenance</option>
+                            <option value="QUALITY" {% if indent_details[3] == 'QUALITY' %}selected{% endif %}>Quality Control</option>
+                            <option value="STORES" {% if indent_details[3] == 'STORES' %}selected{% endif %}>Stores</option>
+                            <option value="ADMIN" {% if indent_details[3] == 'ADMIN' %}selected{% endif %}>Administration</option>
+                            <option value="IT" {% if indent_details[3] == 'IT' %}selected{% endif %}>Information Technology</option>
+                            <option value="HR" {% if indent_details[3] == 'HR' %}selected{% endif %}>Human Resources</option>
+                            <option value="FINANCE" {% if indent_details[3] == 'FINANCE' %}selected{% endif %}>Finance</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="requested_by" class="form-label">Requested By <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="requested_by" name="requested_by"
+                               value="{{ indent_details[4] or '' }}" required
+                               pattern="[A-Za-z\s\-\.\(\)\/&]+" title="Only letters, spaces, and basic punctuation allowed">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="remarks" class="form-label">Remarks</label>
+                        <textarea class="form-control" id="remarks" name="remarks" rows="2"
+                                  placeholder="Any additional remarks...">{{ indent_details[6] or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Line Items Section -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Line Items</h6>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="addLineItem()">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="lineItemsTable">
+                            <thead>
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="20%">Part Number</th>
+                                    <th width="25%">Part Description</th>
+                                    <th width="15%">Quantity</th>
+                                    <th width="15%">Required Date</th>
+                                    <th width="15%">Remarks</th>
+                                    <th width="5%">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineItemsBody">
+                                {% for item in indent_items %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <select class="form-control part-select" name="part_num[]" required onchange="updatePartDescription(this)">
+                                            <option value="">Select Part</option>
+                                            {% for part in parts %}
+                                            <option value="{{ part[0] }}" {% if part[0] == item[1] %}selected{% endif %}>{{ part[0] }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control part-desc" name="part_desc[]" 
+                                               value="{{ item[2] or '' }}" readonly style="background-color: #f8f9fa;">
+                                    </td>
+                                    <td>
+                                        <input type="number" class="form-control" name="quantity[]" 
+                                               value="{{ item[3] or '' }}" min="0.01" step="0.01" max="999999" required>
+                                    </td>
+                                    <td>
+                                        <input type="date" class="form-control" name="required_date[]" 
+                                               value="{{ item[4].strftime('%Y-%m-%d') if item[4] else '' }}">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control" name="item_remarks[]" 
+                                               value="{{ item[5] or '' }}" placeholder="Item remarks">
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="removeLineItem(this)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('indents') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Update Indent
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let lineItemCounter = {{ indent_items|length }};
+
+function addLineItem() {
+    lineItemCounter++;
+    const tbody = document.getElementById('lineItemsBody');
+    const newRow = document.createElement('tr');
+    
+    newRow.innerHTML = `
+        <td>${lineItemCounter}</td>
+        <td>
+            <select class="form-control part-select" name="part_num[]" required onchange="updatePartDescription(this)">
+                <option value="">Select Part</option>
+                {% for part in parts %}
+                <option value="{{ part[0] }}">{{ part[0] }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <input type="text" class="form-control part-desc" name="part_desc[]" readonly style="background-color: #f8f9fa;">
+        </td>
+        <td>
+            <input type="number" class="form-control" name="quantity[]" min="0.01" step="0.01" max="999999" required>
+        </td>
+        <td>
+            <input type="date" class="form-control" name="required_date[]">
+        </td>
+        <td>
+            <input type="text" class="form-control" name="item_remarks[]" placeholder="Item remarks">
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeLineItem(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+    
+    tbody.appendChild(newRow);
+    updateRowNumbers();
+}
+
+function removeLineItem(button) {
+    const row = button.closest('tr');
+    row.remove();
+    updateRowNumbers();
+}
+
+function updateRowNumbers() {
+    const rows = document.querySelectorAll('#lineItemsBody tr');
+    rows.forEach((row, index) => {
+        row.cells[0].textContent = index + 1;
+    });
+    lineItemCounter = rows.length;
+}
+
+function updatePartDescription(selectElement) {
+    const partNum = selectElement.value;
+    const row = selectElement.closest('tr');
+    const partDescInput = row.querySelector('.part-desc');
+    
+    if (partNum) {
+        // Find the part description from the parts list
+        const partOptions = selectElement.options;
+        for (let i = 0; i < partOptions.length; i++) {
+            if (partOptions[i].value === partNum) {
+                // You might want to fetch this from an API or have it in the template
+                partDescInput.value = 'Part Description'; // Placeholder
+                break;
+            }
+        }
+    } else {
+        partDescInput.value = '';
+    }
+}
+
+// Form validation
+document.getElementById('indentForm').addEventListener('submit', function(e) {
+    const rows = document.querySelectorAll('#lineItemsBody tr');
+    if (rows.length === 0) {
+        e.preventDefault();
+        alert('Please add at least one line item.');
+        return false;
+    }
+    
+    let hasValidItems = false;
+    rows.forEach(row => {
+        const partNum = row.querySelector('select[name="part_num[]"]').value;
+        const quantity = row.querySelector('input[name="quantity[]"]').value;
+        
+        if (partNum && quantity && parseFloat(quantity) > 0) {
+            hasValidItems = true;
+        }
+    });
+    
+    if (!hasValidItems) {
+        e.preventDefault();
+        alert('Please add at least one valid line item with part number and quantity.');
+        return false;
+    }
+});
+</script>
+{% endblock %}

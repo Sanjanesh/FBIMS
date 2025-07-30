@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Update - Inventory Management System{% endblock %}
+{% block page_title %}Stock Update{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-edit"></i> Update Stock Levels
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('stock_update') }}">
+                    <div class="row">
+                        <!-- Part Selection -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="part_num" class="form-label">Select Part <span class="text-danger">*</span></label>
+                                <select class="form-select" id="part_num" name="part_num" required onchange="loadPartDetails()">
+                                    <option value="">Choose a part...</option>
+                                    {% for part in parts %}
+                                    <option value="{{ part[0] }}" {% if request.args.get('part') == part[0]|string %}selected{% endif %}>
+                                        {{ part[1] }} ({{ part[0] }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Update Type -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="update_type" class="form-label">Update Type <span class="text-danger">*</span></label>
+                                <select class="form-select" id="update_type" name="update_type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="IN">Stock In (+)</option>
+                                    <option value="OUT">Stock Out (-)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Quantity -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="quantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="quantity" name="quantity"
+                                       step="0.01" min="0.01" max="999999" required>
+                            </div>
+                        </div>
+
+                        <!-- Current Stock Display -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Current Stock</label>
+                                <div class="form-control-plaintext" id="currentStock">
+                                    <span class="text-muted">Select a part to view current stock</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Remarks -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="remarks" class="form-label">Remarks</label>
+                                <textarea class="form-control" id="remarks" name="remarks" rows="3" 
+                                          placeholder="Enter reason for stock update, reference numbers, etc."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Section -->
+                    <div class="row" id="previewSection" style="display: none;">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle"></i> Update Preview</h6>
+                                <div id="previewContent"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="row">
+                        <div class="col-12">
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('stock_management') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Back to Stock
+                                </a>
+                                <div>
+                                    <button type="button" class="btn btn-info me-2" onclick="previewUpdate()">
+                                        <i class="fas fa-eye"></i> Preview
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Update Stock
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Stock Updates -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-history"></i> Recent Stock Updates
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Part</th>
+                                <th>Type</th>
+                                <th>Quantity</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentUpdates">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading recent updates...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Part details data (would normally come from API)
+const partDetails = {};
+
+function loadPartDetails() {
+    const partNum = document.getElementById('part_num').value;
+    const currentStockDiv = document.getElementById('currentStock');
+    
+    if (!partNum) {
+        currentStockDiv.innerHTML = '<span class="text-muted">Select a part to view current stock</span>';
+        return;
+    }
+    
+    // Simulate loading current stock (in real app, this would be an API call)
+    currentStockDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+    
+    setTimeout(() => {
+        // Simulate stock data
+        const stockLevel = Math.floor(Math.random() * 100);
+        const stockStatus = stockLevel <= 0 ? 'danger' : stockLevel < 10 ? 'warning' : 'success';
+        
+        currentStockDiv.innerHTML = `
+            <span class="badge bg-${stockStatus} fs-6">${stockLevel} units</span>
+            <small class="text-muted ms-2">Last updated: ${new Date().toLocaleDateString()}</small>
+        `;
+        
+        partDetails[partNum] = { currentStock: stockLevel };
+    }, 500);
+}
+
+function previewUpdate() {
+    const partNum = document.getElementById('part_num').value;
+    const updateType = document.getElementById('update_type').value;
+    const quantity = parseFloat(document.getElementById('quantity').value) || 0;
+    const remarks = document.getElementById('remarks').value;
+    
+    if (!partNum || !updateType || !quantity) {
+        alert('Please fill in all required fields before previewing.');
+        return;
+    }
+    
+    const currentStock = partDetails[partNum]?.currentStock || 0;
+    const newStock = updateType === 'IN' ? currentStock + quantity : currentStock - quantity;
+    const partName = document.getElementById('part_num').options[document.getElementById('part_num').selectedIndex].text;
+    
+    const previewContent = `
+        <strong>Part:</strong> ${partName}<br>
+        <strong>Current Stock:</strong> ${currentStock} units<br>
+        <strong>Update Type:</strong> ${updateType === 'IN' ? 'Stock In (+)' : 'Stock Out (-)'}<br>
+        <strong>Quantity:</strong> ${quantity} units<br>
+        <strong>New Stock Level:</strong> <span class="badge bg-${newStock <= 0 ? 'danger' : newStock < 10 ? 'warning' : 'success'}">${newStock} units</span><br>
+        ${remarks ? `<strong>Remarks:</strong> ${remarks}` : ''}
+    `;
+    
+    document.getElementById('previewContent').innerHTML = previewContent;
+    document.getElementById('previewSection').style.display = 'block';
+}
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const partNum = document.getElementById('part_num').value;
+    const updateType = document.getElementById('update_type').value;
+    const quantity = document.getElementById('quantity').value;
+    
+    if (!partNum || !updateType || !quantity) {
+        e.preventDefault();
+        alert('Please fill in all required fields.');
+        return false;
+    }
+    
+    if (parseFloat(quantity) <= 0) {
+        e.preventDefault();
+        alert('Quantity must be greater than 0.');
+        return false;
+    }
+    
+    // Confirm stock out operations
+    if (updateType === 'OUT') {
+        const currentStock = partDetails[partNum]?.currentStock || 0;
+        const newStock = currentStock - parseFloat(quantity);
+        
+        if (newStock < 0) {
+            if (!confirm(`This will result in negative stock (${newStock}). Are you sure you want to continue?`)) {
+                e.preventDefault();
+                return false;
+            }
+        }
+    }
+    
+    return true;
+});
+
+// Load recent updates (simulated)
+function loadRecentUpdates() {
+    const tbody = document.getElementById('recentUpdates');
+    
+    setTimeout(() => {
+        tbody.innerHTML = `
+            <tr>
+                <td>${new Date().toLocaleDateString()}</td>
+                <td>Sample Part 001</td>
+                <td><span class="badge bg-success">IN</span></td>
+                <td>50</td>
+                <td>Initial stock</td>
+            </tr>
+            <tr>
+                <td>${new Date(Date.now() - 86400000).toLocaleDateString()}</td>
+                <td>Sample Part 002</td>
+                <td><span class="badge bg-danger">OUT</span></td>
+                <td>25</td>
+                <td>Sales order fulfillment</td>
+            </tr>
+        `;
+    }, 1000);
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadRecentUpdates();
+    
+    // If part is pre-selected from URL parameter
+    const partSelect = document.getElementById('part_num');
+    if (partSelect.value) {
+        loadPartDetails();
+    }
+});
+</script>
+{% endblock %}

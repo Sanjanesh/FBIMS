@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}GRN #{{ grn_header[1] }} - Inventory Management System{% endblock %}
+{% block page_title %}Goods Receipt Note #{{ grn_header[1] }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-truck"></i> GRN Details
+                </h6>
+                <div>
+                    <button class="btn btn-sm btn-success" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                    <button class="btn btn-sm btn-info" onclick="emailGRN()">
+                        <i class="fas fa-envelope"></i> Email
+                    </button>
+                    <a href="{{ url_for('grn_management') }}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Header Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5 class="text-primary">GRN Information</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>GRN Number:</strong></td>
+                                <td>{{ grn_header[1] }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>GRN Date:</strong></td>
+                                <td>{{ grn_header[2].strftime('%d-%m-%Y') if grn_header[2] else '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>PO Number:</strong></td>
+                                <td>
+                                    {% if grn_header[4] %}
+                                        <a href="{{ url_for('view_purchase_order', po_no=grn_header[4]) }}" class="text-decoration-none">
+                                            PO-{{ grn_header[4] }}
+                                        </a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>PO Date:</strong></td>
+                                <td>{{ grn_header[14].strftime('%d-%m-%Y') if grn_header[14] else '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    {% if grn_header[5] %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created By:</strong></td>
+                                <td>{{ grn_header[6] or 'N/A' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="text-primary">Vendor Information</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Vendor Name:</strong></td>
+                                <td>{{ grn_header[8] or 'Unknown Vendor' }}</td>
+                            </tr>
+                            {% if grn_header[9] %}
+                            <tr>
+                                <td><strong>Address:</strong></td>
+                                <td>{{ grn_header[9] }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if grn_header[10] and grn_header[11] %}
+                            <tr>
+                                <td><strong>Location:</strong></td>
+                                <td>{{ grn_header[10] }}, {{ grn_header[11] }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if grn_header[12] %}
+                            <tr>
+                                <td><strong>Phone:</strong></td>
+                                <td>{{ grn_header[12] }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if grn_header[13] %}
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td><a href="mailto:{{ grn_header[13] }}">{{ grn_header[13] }}</a></td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Line Items -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="text-primary">Received Items</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Row</th>
+                                        <th>Part Number</th>
+                                        <th>Description</th>
+                                        <th>Unit</th>
+                                        <th class="text-end">Quantity</th>
+                                        <th class="text-end">Unit Price</th>
+                                        <th class="text-end">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for line in grn_lines %}
+                                    <tr>
+                                        <td>{{ line[2] }}</td>
+                                        <td><strong>{{ line[3] }}</strong></td>
+                                        <td>{{ line[13] or 'N/A' }}</td>
+                                        <td>{{ line[14] or '-' }}</td>
+                                        <td class="text-end">{{ "%.2f"|format(line[5]) if line[5] else '0.00' }}</td>
+                                        <td class="text-end">₹{{ "%.2f"|format(line[7]) if line[7] else '0.00' }}</td>
+                                        <td class="text-end">₹{{ "%.2f"|format(line[9]) if line[9] else '0.00' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-info">
+                                    <tr>
+                                        <td colspan="6" class="text-end"><strong>Total Amount:</strong></td>
+                                        <td class="text-end"><strong>₹{{ "%.2f"|format(grn_lines|map(attribute='9')|select|sum) }}</strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card stat-card-primary text-center">
+                            <div class="card-body">
+                                <i class="fas fa-list fa-2x mb-2"></i>
+                                <h5>{{ grn_lines|length }}</h5>
+                                <p class="mb-0">Line Items</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card-success text-center">
+                            <div class="card-body">
+                                <i class="fas fa-boxes fa-2x mb-2"></i>
+                                <h5>{{ grn_lines|map(attribute='5')|select|sum|round(2) if grn_lines else 0 }}</h5>
+                                <p class="mb-0">Total Quantity</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card-info text-center">
+                            <div class="card-body">
+                                <i class="fas fa-rupee-sign fa-2x mb-2"></i>
+                                <h5>₹{{ "%.0f"|format(grn_lines|map(attribute='9')|select|sum) if grn_lines else 0 }}</h5>
+                                <p class="mb-0">Total Value</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card-warning text-center">
+                            <div class="card-body">
+                                <i class="fas fa-calendar fa-2x mb-2"></i>
+                                <h5>{{ grn_header[2].strftime('%d %b') if grn_header[2] else 'N/A' }}</h5>
+                                <p class="mb-0">GRN Date</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .btn, .card-header .btn {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .card-body {
+        padding: 0 !important;
+    }
+    
+    body {
+        background: white !important;
+    }
+}
+
+.stat-card-primary {
+    border-left: 4px solid #007bff;
+}
+
+.stat-card-success {
+    border-left: 4px solid #28a745;
+}
+
+.stat-card-info {
+    border-left: 4px solid #17a2b8;
+}
+
+.stat-card-warning {
+    border-left: 4px solid #ffc107;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function emailGRN() {
+    alert('Email GRN functionality coming soon!');
+}
+</script>
+{% endblock %}

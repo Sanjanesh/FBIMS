@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Management - Inventory Management System{% endblock %}
+{% block page_title %}Stock Management{% endblock %}
+
+{% block content %}
+<!-- Summary Statistics -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Items</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stock_data|length }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">In Stock</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% set in_stock_count = 0 %}
+                            {% for item in stock_data %}
+                                {% if item[4] and item[4] > 0 %}
+                                    {% set in_stock_count = in_stock_count + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ in_stock_count }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Low Stock</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% set low_stock_count = 0 %}
+                            {% for item in stock_data %}
+                                {% if item[4] and item[4] <= 10 and item[4] > 0 %}
+                                    {% set low_stock_count = low_stock_count + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ low_stock_count }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Out of Stock</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% set out_stock_count = 0 %}
+                            {% for item in stock_data %}
+                                {% if not item[4] or item[4] <= 0 %}
+                                    {% set out_stock_count = out_stock_count + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ out_stock_count }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-times-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-warehouse"></i> Current Stock Levels
+                </h6>
+                <div>
+                    <a href="{{ url_for('stock_update') }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus"></i> Stock Update
+                    </a>
+                <a href="{{ url_for('stock_adjustment') }}" class="btn btn-warning btn-sm">
+                    <i class="fas fa-balance-scale"></i> Stock Adjustment
+                </a>
+                    <button class="btn btn-info btn-sm" onclick="refreshStock()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Search and Filter -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchStock" placeholder="Search parts...">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="categoryFilter">
+                            <option value="">All Categories</option>
+                            <!-- Categories will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="stockFilter">
+                            <option value="">All Stock Levels</option>
+                            <option value="low">Low Stock (< 10)</option>
+                            <option value="zero">Zero Stock</option>
+                            <option value="available">Available Stock</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Stock Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover" id="stockTable">
+                        <thead>
+                            <tr>
+                                <th>Part Number</th>
+                                <th>Description</th>
+                                <th>Category</th>
+                                <th>Unit</th>
+                                <th class="text-end">Current Stock</th>
+                                <th class="text-end">Reserved</th>
+                                <th class="text-end">Available</th>
+                                <th class="text-end">Purchase Price</th>
+                                <th class="text-end">Selling Price</th>
+                                <th class="text-end">Stock Value</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stock in stock_data %}
+                            <tr>
+                                <td><strong>{{ stock[0] }}</strong></td>
+                                <td>{{ stock[1] }}</td>
+                                <td>{{ stock[2] or '-' }}</td>
+                                <td>{{ stock[3] or '-' }}</td>
+                                <td class="text-end">
+                                    <span class="badge {% if stock[4] <= 0 %}bg-danger{% elif stock[4] < 10 %}bg-warning{% else %}bg-success{% endif %}">
+                                        {{ stock[4] or 0 }}
+                                    </span>
+                                </td>
+                                <td class="text-end">{{ stock[5] or 0 }}</td>
+                                <td class="text-end">{{ stock[6] or 0 }}</td>
+                                <td class="text-end">
+                                    {% if stock[7] %}
+                                        ₹{{ "%.2f"|format(stock[7]) }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if stock[8] %}
+                                        ₹{{ "%.2f"|format(stock[8]) }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if stock[7] and stock[4] %}
+                                        <strong>₹{{ "%.2f"|format(stock[7]|float * stock[4]|float) }}</strong>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if stock[4] <= 0 %}
+                                        <span class="badge bg-danger">Out of Stock</span>
+                                    {% elif stock[4] < 10 %}
+                                        <span class="badge bg-warning">Low Stock</span>
+                                    {% else %}
+                                        <span class="badge bg-success">In Stock</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('stock_history', part_num=stock[0]) }}"
+                                           class="btn btn-sm btn-outline-primary" title="Stock History">
+                                            <i class="fas fa-history"></i>
+                                        </a>
+                                        <a href="{{ url_for('stock_update') }}?part={{ stock[0] }}" 
+                                           class="btn btn-sm btn-outline-success" title="Update Stock">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if not stock_data %}
+                <div class="text-center py-4">
+                    <i class="fas fa-warehouse fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No stock data found</h5>
+                    <p class="text-muted">Stock levels will appear here once you start managing inventory.</p>
+                    <a href="{{ url_for('stock_update') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Stock Entry
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stock Statistics -->
+
+
+<!-- Stock Value Summary -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-pie"></i> Stock Value Summary
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="text-success">
+                            Total Stock Value:
+                            ₹{{ "%.2f"|format(0) }}
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <small class="text-muted">Based on purchase prices and current stock levels</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stat-card-danger {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Search and filter functionality
+document.getElementById('searchStock').addEventListener('input', filterTable);
+document.getElementById('categoryFilter').addEventListener('change', filterTable);
+document.getElementById('stockFilter').addEventListener('change', filterTable);
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchStock').value.toLowerCase();
+    const categoryFilter = document.getElementById('categoryFilter').value.toLowerCase();
+    const stockFilter = document.getElementById('stockFilter').value;
+    
+    const table = document.getElementById('stockTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length > 0) {
+            const partNum = cells[0].textContent.toLowerCase();
+            const description = cells[1].textContent.toLowerCase();
+            const category = cells[2].textContent.toLowerCase();
+            const stockLevel = parseInt(cells[4].textContent.trim()) || 0;
+            
+            let showRow = true;
+            
+            // Search filter
+            if (searchTerm && !partNum.includes(searchTerm) && !description.includes(searchTerm)) {
+                showRow = false;
+            }
+            
+            // Category filter
+            if (categoryFilter && !category.includes(categoryFilter)) {
+                showRow = false;
+            }
+            
+            // Stock level filter
+            if (stockFilter) {
+                switch (stockFilter) {
+                    case 'low':
+                        if (stockLevel >= 10 || stockLevel <= 0) showRow = false;
+                        break;
+                    case 'zero':
+                        if (stockLevel > 0) showRow = false;
+                        break;
+                    case 'available':
+                        if (stockLevel <= 0) showRow = false;
+                        break;
+                }
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        }
+    }
+}
+
+// Populate category filter
+function populateCategoryFilter() {
+    const categories = new Set();
+    const table = document.getElementById('stockTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const categoryCell = rows[i].getElementsByTagName('td')[2];
+        if (categoryCell && categoryCell.textContent.trim() !== '-') {
+            categories.add(categoryCell.textContent.trim());
+        }
+    }
+    
+    const categoryFilter = document.getElementById('categoryFilter');
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categoryFilter.appendChild(option);
+    });
+}
+
+// Action functions
+function viewStockHistory(partNum) {
+    window.location.href = '/stock_history/' + partNum;
+}
+
+function refreshStock() {
+    location.reload();
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    populateCategoryFilter();
+});
+</script>
+{% endblock %}

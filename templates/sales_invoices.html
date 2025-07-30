@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Sales Invoices - Inventory Management System{% endblock %}
+{% block page_title %}Sales Invoices{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-file-invoice"></i> Sales Invoices
+                </h6>
+                <a href="{{ url_for('add_sales_invoice') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Create New Invoice
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Search and Filter -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchInvoice" placeholder="Search invoice number or customer...">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="dateFromFilter" placeholder="From Date">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="dateToFilter" placeholder="To Date">
+                    </div>
+                </div>
+
+                <!-- Sales Invoices Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover" id="salesInvoicesTable">
+                        <thead>
+                            <tr>
+                                <th>Invoice Number</th>
+                                <th>Invoice Date</th>
+                                <th>Customer Name</th>
+                                <th>Line Items</th>
+                                <th>Total Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in sales_invoices %}
+                            <tr>
+                                <td><strong>{{ invoice[0] }}</strong></td>
+                                <td>{{ invoice[1].strftime('%Y-%m-%d') if invoice[1] else '-' }}</td>
+                                <td>{{ invoice[2] or 'Unknown Customer' }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ invoice[4] or 0 }} items</span>
+                                </td>
+                                <td>
+                                    {% if invoice[5] %}
+                                        <strong>₹{{ "%.2f"|format(invoice[5]) }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">₹0.00</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if invoice[3] %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('view_sales_invoice', inv_no=invoice[0]) }}"
+                                           class="btn btn-sm btn-outline-primary" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('edit_sales_invoice', inv_no=invoice[0]) }}"
+                                           class="btn btn-sm btn-outline-warning" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-success" 
+                                                onclick="printInvoice({{ invoice[0] }})" title="Print">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-info" 
+                                                onclick="emailInvoice({{ invoice[0] }})" title="Email">
+                                            <i class="fas fa-envelope"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteInvoice({{ invoice[0] }})" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if not sales_invoices %}
+                <div class="text-center py-4">
+                    <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No sales invoices found</h5>
+                    <p class="text-muted">Start by creating your first sales invoice.</p>
+                    <a href="{{ url_for('add_sales_invoice') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create First Invoice
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sales Invoice Statistics -->
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <i class="fas fa-file-invoice fa-2x mb-2"></i>
+                <h5>{{ sales_invoices|length }}</h5>
+                <p class="mb-0">Total Invoices</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-success text-center">
+            <div class="card-body">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <h5>{{ sales_invoices|selectattr('3')|list|length }}</h5>
+                <p class="mb-0">Active Invoices</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-warning text-center">
+            <div class="card-body">
+                <i class="fas fa-clock fa-2x mb-2"></i>
+                <h5>{{ sales_invoices|rejectattr('3')|list|length }}</h5>
+                <p class="mb-0">Inactive Invoices</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card stat-card-info text-center">
+            <div class="card-body">
+                <i class="fas fa-rupee-sign fa-2x mb-2"></i>
+                <h5>₹{{ "%.0f"|format(sales_invoices|map(attribute='5')|select|sum) }}</h5>
+                <p class="mb-0">Total Value</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Search and filter functionality
+document.getElementById('searchInvoice').addEventListener('input', filterTable);
+document.getElementById('statusFilter').addEventListener('change', filterTable);
+document.getElementById('dateFromFilter').addEventListener('change', filterTable);
+document.getElementById('dateToFilter').addEventListener('change', filterTable);
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchInvoice').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const dateFrom = document.getElementById('dateFromFilter').value;
+    const dateTo = document.getElementById('dateToFilter').value;
+    
+    const table = document.getElementById('salesInvoicesTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length > 0) {
+            const invoiceNumber = cells[0].textContent.toLowerCase();
+            const invoiceDate = cells[1].textContent;
+            const customerName = cells[2].textContent.toLowerCase();
+            const statusBadge = cells[5].querySelector('.badge');
+            const isActive = statusBadge && statusBadge.classList.contains('bg-success');
+            
+            let showRow = true;
+            
+            // Search filter
+            if (searchTerm && !invoiceNumber.includes(searchTerm) && !customerName.includes(searchTerm)) {
+                showRow = false;
+            }
+            
+            // Status filter
+            if (statusFilter) {
+                const filterActive = statusFilter === 'true';
+                if (isActive !== filterActive) {
+                    showRow = false;
+                }
+            }
+            
+            // Date filters
+            if (dateFrom && invoiceDate < dateFrom) {
+                showRow = false;
+            }
+            if (dateTo && invoiceDate > dateTo) {
+                showRow = false;
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        }
+    }
+}
+
+// Action functions
+function viewInvoice(invoiceNumber) {
+    alert('View invoice functionality coming soon! Invoice: ' + invoiceNumber);
+}
+
+function editInvoice(invoiceNumber) {
+    window.location.href = '/sales_invoices/edit/' + invoiceNumber;
+}
+
+function printInvoice(invoiceNumber) {
+    window.open('/sales_invoices/view/' + invoiceNumber, '_blank');
+}
+
+function emailInvoice(invoiceNumber) {
+    alert('Email invoice functionality coming soon! Invoice: ' + invoiceNumber);
+}
+
+function deleteInvoice(invoiceNumber) {
+    if (confirm('Are you sure you want to delete invoice ' + invoiceNumber + '?')) {
+        // Create a form and submit it for DELETE request
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/sales_invoices/delete/' + invoiceNumber;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function showComingSoon() {
+    alert('Sales invoice creation functionality coming soon!');
+}
+</script>
+{% endblock %}

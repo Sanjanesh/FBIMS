@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}GRN Management - Inventory Management System{% endblock %}
+{% block page_title %}Goods Receipt Note (GRN) Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Summary Statistics -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total GRNs</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats[0] or 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-truck fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Active GRNs</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats[1] or 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Value</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">₹{{ "%.0f"|format(stats[2]) if stats[2] else 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-rupee-sign fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Vendors</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats[3] or 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-building fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-truck"></i> Goods Receipt Notes
+                </h6>
+                <div>
+                    <a href="{{ url_for('grn_create_from_po') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Create New GRN
+                    </a>
+                    <button class="btn btn-info btn-sm" onclick="exportGRNs()">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Search and Filter -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="searchGRN" placeholder="Search GRNs..." onkeyup="filterGRNs()">
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-control" id="statusFilter" onchange="filterGRNs()">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="dateFilter" onchange="filterGRNs()">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-secondary btn-block" onclick="clearFilters()">Clear</button>
+                    </div>
+                </div>
+
+                <!-- GRNs Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover" id="grnsTable">
+                        <thead>
+                            <tr>
+                                <th>GRN Number</th>
+                                <th>GRN Date</th>
+                                <th>PO Number</th>
+                                <th>Vendor Name</th>
+                                <th>Line Items</th>
+                                <th>Total Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for grn in grns %}
+                            <tr>
+                                <td><strong>{{ grn[0] }}</strong></td>
+                                <td>{{ grn[1].strftime('%Y-%m-%d') if grn[1] else '-' }}</td>
+                                <td>
+                                    {% if grn[2] %}
+                                        <a href="{{ url_for('view_purchase_order', po_no=grn[2]) }}" class="text-decoration-none">
+                                            PO-{{ grn[2] }}
+                                        </a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ grn[3] or 'Unknown Vendor' }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ grn[5] or 0 }} items</span>
+                                </td>
+                                <td>
+                                    {% if grn[6] %}
+                                        <strong>₹{{ "%.2f"|format(grn[6]) }}</strong>
+                                    {% else %}
+                                        <span class="text-muted">₹0.00</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if grn[4] %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('view_grn', grn_no=grn[0]) }}" class="btn btn-sm btn-outline-primary" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-success" onclick="printGRN({{ grn[0] }})" title="Print">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-info" onclick="emailGRN({{ grn[0] }})" title="Email">
+                                            <i class="fas fa-envelope"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if not grns %}
+                <div class="text-center py-4">
+                    <i class="fas fa-truck fa-3x text-gray-300 mb-3"></i>
+                    <h5 class="text-gray-500">No GRNs Found</h5>
+                    <p class="text-gray-400">Start by creating your first Goods Receipt Note from a Purchase Order.</p>
+                    <a href="{{ url_for('grn_create_from_po') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create First GRN
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterGRNs() {
+    const searchTerm = document.getElementById('searchGRN').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+    const dateFilter = document.getElementById('dateFilter').value;
+    const table = document.getElementById('grnsTable');
+    const rows = table.getElementsByTagName('tr');
+
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        
+        if (cells.length > 0) {
+            const grnNumber = cells[0].textContent.toLowerCase();
+            const grnDate = cells[1].textContent;
+            const poNumber = cells[2].textContent.toLowerCase();
+            const vendorName = cells[3].textContent.toLowerCase();
+            const status = cells[6].textContent.toLowerCase();
+            
+            let showRow = true;
+            
+            // Search filter
+            if (searchTerm && !grnNumber.includes(searchTerm) && 
+                !poNumber.includes(searchTerm) && !vendorName.includes(searchTerm)) {
+                showRow = false;
+            }
+            
+            // Status filter
+            if (statusFilter && !status.includes(statusFilter)) {
+                showRow = false;
+            }
+            
+            // Date filter
+            if (dateFilter && grnDate !== dateFilter) {
+                showRow = false;
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        }
+    }
+}
+
+function clearFilters() {
+    document.getElementById('searchGRN').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('dateFilter').value = '';
+    filterGRNs();
+}
+
+function printGRN(grnNumber) {
+    window.open('/grn/view/' + grnNumber, '_blank');
+}
+
+function emailGRN(grnNumber) {
+    alert('Email GRN functionality coming soon! GRN: ' + grnNumber);
+}
+
+function exportGRNs() {
+    alert('Export GRNs functionality coming soon!');
+}
+</script>
+{% endblock %}
